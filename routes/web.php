@@ -28,13 +28,16 @@ Route::get('/pet/{id}', [App\Http\Controllers\PublicPetController::class, 'show'
 Route::get('/contactanos', function () {
     return view('contactanos');
 })->name('contactanos');
-Route::post('/contactanos', [ContactForm::class, 'store'])->name('contactanos.store');
+Route::post('/contactanos', [ContactForm::class, 'store'])->middleware('throttle:3,1')->name('contactanos.store');
+
+// API endpoints para validación en tiempo real
+Route::post('/api/validate-qr-code', [PetController::class, 'validateQRCodeRealTime'])->middleware('throttle:20,1')->name('api.validate-qr-code');
 
 // Authentication routes (from auth.php)
 require __DIR__.'/auth.php';
 
 // Ruta para registrar una solicitud (pública)
-Route::post('/mascotaqr', [SolicitudController::class, 'store'])->name('solicitudes.store');
+Route::post('/mascotaqr', [SolicitudController::class, 'store'])->middleware('throttle:3,1')->name('solicitudes.store');
 
 // Authenticated routes (require login)
 Route::middleware('auth')->group(function () {
@@ -45,6 +48,8 @@ Route::middleware('auth')->group(function () {
 
         if ($user->hasRole('cliente_qr')) {
             return redirect()->route('dashboard.cliente.index');
+        } elseif ($user->hasRole('veterinario')) {
+            return redirect()->route('dashboard.veterinario');
         } elseif ($user->hasAnyRole(['administrador', 'super_admin'])) {
             return redirect()->route('dashboard.administrador');
         }
@@ -52,21 +57,33 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     // Rutas del dashboard para clientes (solo para clientes_qr)
-    Route::middleware('role:cliente_qr')->prefix('dashboard/cliente')->name('dashboard.cliente.')->group(function () {
+    Route::middleware(['role:cliente_qr', 'throttle:60,1'])->prefix('dashboard/cliente')->name('dashboard.cliente.')->group(function () {
         Route::get('/', [PetController::class, 'dashboardCliente'])->name('index');
+        Route::get('/nuevo', [PetController::class, 'dashboardCliente'])->name('nuevo');
         Route::get('/registrar-mascota', [PetController::class, 'create'])->name('registrar.mascota');
-        Route::get('/mascotas/{id}', [PetController::class, 'show'])->name('mascotas.show');
-        Route::get('/mascotas/{pet}/edit', [PetController::class, 'edit'])->name('mascotas.edit');
-        Route::put('/mascotas/{pet}', [PetController::class, 'update'])->name('mascotas.update');
-        Route::put('/mascotas/{pet}/image', [PetController::class, 'updateImage'])->name('mascotas.update-image');
-        Route::get('/mascotas/{pet}/vaccination-history', [PetController::class, 'showVaccinationHistory'])->name('mascotas.vaccination-history');
-        Route::post('/mascotas/{pet}/vaccination-records', [PetController::class, 'storeVaccinationRecord'])->name('mascotas.vaccination-records.store');
-        Route::post('/solicitudes/store-pet', [SolicitudController::class, 'storePetRequest'])->name('solicitudes.store-pet');
-        Route::post('/mascotas/{pet}/generate-qr', [PetController::class, 'generateQRCode'])->name('mascotas.generate-qr');
+        Route::get('/mascotas/{pet:slug}', [PetController::class, 'show'])->name('mascotas.show');
+        Route::get('/mascotas/{pet:slug}/edit', [PetController::class, 'edit'])->name('mascotas.edit');
+        Route::put('/mascotas/{pet:slug}', [PetController::class, 'update'])->middleware('throttle:10,1')->name('mascotas.update');
+        Route::put('/mascotas/{pet:slug}/image', [PetController::class, 'updateImage'])->middleware('throttle:5,1')->name('mascotas.update-image');
+        Route::get('/mascotas/{pet:slug}/vaccination-history', [PetController::class, 'showVaccinationHistory'])->name('mascotas.vaccination-history');
+        Route::post('/mascotas/{pet:slug}/vaccination-records', [PetController::class, 'storeVaccinationRecord'])->middleware('throttle:20,1')->name('mascotas.vaccination-records.store');
+        Route::post('/solicitudes/store-pet', [SolicitudController::class, 'storePetRequest'])->middleware('throttle:3,1')->name('solicitudes.store-pet');
+        
+        // Rutas para solicitudes de mascotas (para clientes)
+        Route::prefix('pet-requests')->name('pet-requests.')->group(function () {
+            Route::get('/', [App\Http\Controllers\PetRequestController::class, 'index'])->name('index');
+            Route::get('/create', [App\Http\Controllers\PetRequestController::class, 'create'])->name('create');
+            Route::post('/store', [App\Http\Controllers\PetRequestController::class, 'store'])->name('store');
+            Route::get('/{petRequest}', [App\Http\Controllers\PetRequestController::class, 'show'])->name('show');
+        });
+        
+        // Ruta para notificaciones del cliente
+        Route::get('/notificaciones', [PetController::class, 'clientNotifications'])->name('notificaciones');
+        Route::post('/mascotas/{pet:slug}/generate-qr', [PetController::class, 'generateQRCode'])->middleware('throttle:10,1')->name('mascotas.generate-qr');
 
         // Rutas para depuración
-        Route::get('/mascotas/{pet}/debug-records', [PetController::class, 'debugRecords'])->name('mascotas.debug-records');
-        Route::get('/mascotas/{pet}/debug-refresh', [PetController::class, 'debugRefreshCache'])->name('mascotas.debug-refresh');
+        Route::get('/mascotas/{pet:slug}/debug-records', [PetController::class, 'debugRecords'])->name('mascotas.debug-records');
+        Route::get('/mascotas/{pet:slug}/debug-refresh', [PetController::class, 'debugRefreshCache'])->name('mascotas.debug-refresh');
     });
 
     // Rutas del dashboard para administradores (solo para administradores y super_admins)
@@ -109,8 +126,44 @@ Route::middleware('auth')->group(function () {
         // Rutas para códigos QR
         Route::prefix('qr')->group(function () {
             Route::get('/generator', [PetController::class, 'qrGenerator'])->name('qr.generator');
+            Route::post('/generate-single', [PetController::class, 'generateSingleQRCode'])->name('qr.generate-single');
             Route::post('/generate-multiple', [PetController::class, 'generateMultipleQRCodes'])->name('qr.generate-multiple');
         });
+
+    // Ruta para el log de actividades
+    Route::get('/activity-log', [PetController::class, 'activityLog'])->name('dashboard.activity-log');
+    
+    // Rutas para solicitudes de mascotas (solo para administradores)
+    Route::prefix('pet-requests')->name('pet-requests.')->group(function () {
+        Route::get('/', [App\Http\Controllers\PetRequestController::class, 'adminIndex'])->name('index');
+        Route::get('/{petRequest}', [App\Http\Controllers\PetRequestController::class, 'show'])->name('show');
+        Route::post('/{petRequest}/approve', [App\Http\Controllers\PetRequestController::class, 'approve'])->name('approve');
+        Route::post('/{petRequest}/reject', [App\Http\Controllers\PetRequestController::class, 'reject'])->name('reject');
+    });
+    });
+
+    // Rutas del dashboard para veterinarios (solo para veterinarios con permisos)
+    Route::prefix('dashboard/veterinario')->middleware(['role:veterinario', 'permission:ver-asignaciones'])->group(function () {
+        Route::get('/', [App\Http\Controllers\VeterinarioController::class, 'dashboard'])->name('dashboard.veterinario');
+        
+        // Gestión de mascotas asignadas
+        Route::get('mascotas', [App\Http\Controllers\VeterinarioController::class, 'mascotas'])->name('dashboard.veterinario.mascotas');
+        Route::get('mascotas/{pet}', [App\Http\Controllers\VeterinarioController::class, 'showMascota'])->middleware('permission:ver-historial-medico')->name('dashboard.veterinario.mascota.show');
+        
+        // Gestión del historial médico
+        Route::get('mascotas/{pet}/historial', [App\Http\Controllers\VeterinarioController::class, 'gestionarHistorial'])->middleware('permission:gestionar-historial-medico')->name('dashboard.veterinario.historial');
+        Route::post('mascotas/{pet}/vacunas', [App\Http\Controllers\VeterinarioController::class, 'agregarVacuna'])->middleware('permission:crear-vacunas')->name('dashboard.veterinario.vacunas.store');
+        Route::put('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'actualizarVacuna'])->middleware('permission:editar-vacunas')->name('dashboard.veterinario.vacunas.update');
+        Route::delete('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'eliminarVacuna'])->middleware('permission:eliminar-vacunas')->name('dashboard.veterinario.vacunas.destroy');
+    });
+
+    // Rutas para asignación de veterinarios (solo para administradores con permisos)
+    Route::prefix('dashboard/administrador')->middleware(['role:administrador', 'permission:asignar-veterinarios'])->group(function () {
+        Route::get('asignar-veterinario', [App\Http\Controllers\AsignacionVeterinarioController::class, 'index'])->middleware('permission:ver-asignaciones')->name('dashboard.administrador.asignar-veterinario');
+        Route::post('asignar-veterinario', [App\Http\Controllers\AsignacionVeterinarioController::class, 'store'])->middleware('permission:gestionar-asignaciones')->name('dashboard.administrador.asignar-veterinario.store');
+        Route::post('asignar-veterinario/manage', [App\Http\Controllers\AsignacionVeterinarioController::class, 'manage'])->middleware('permission:gestionar-asignaciones')->name('dashboard.administrador.asignar-veterinario.manage');
+        Route::delete('asignar-veterinario/{mascota}/{veterinario}', [App\Http\Controllers\AsignacionVeterinarioController::class, 'desasignar'])->middleware('permission:desasignar-veterinarios')->name('dashboard.administrador.asignar-veterinario.desasignar');
+        Route::get('asignar-veterinario/{mascota}/veterinarios', [App\Http\Controllers\AsignacionVeterinarioController::class, 'getVeterinariosDisponibles'])->middleware('permission:ver-asignaciones')->name('dashboard.administrador.asignar-veterinario.veterinarios');
     });
 
     // Rutas de perfil (para todos los usuarios autenticados)

@@ -36,10 +36,78 @@
             <nav class="space-y-2">
                 <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'dashboard' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600' }}">Dashboard</a>
                 @if(auth()->user()->hasRole('administrador') || auth()->user()->hasRole('super_admin'))
-                    <a href="{{ route('dashboard.usuarios') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'usuarios' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-green-50 hover:text-green-600' }}">Usuarios</a>
-                    <a href="{{ route('usuarios.create') }}" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600">Nuevo Usuario</a>
-                    <a href="{{ route('dashboard.solicitudes') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'solicitudes' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600' }}">Solicitudes @if($pendingRequests > 0)<span class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white">{{ $pendingRequests }}</span>@endif</a>
+                    <!-- Menú desplegable de Usuarios (Móvil) -->
+                    <div x-data="{ open: {{ $active === 'usuarios' ? 'true' : 'false' }} }" class="space-y-1">
+                        <button @click="open = !open" 
+                                class="flex w-full items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <span>Usuarios</span>
+                            </div>
+                            <svg class="h-4 w-4 transition-transform duration-200" 
+                                 :class="{ 'rotate-180': open }" 
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 transform scale-100"
+                             x-transition:leave-end="opacity-0 transform scale-95"
+                             class="space-y-1 pl-6">
+                            <a href="{{ route('dashboard.usuarios') }}" 
+                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'usuarios' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
+                                Lista de Usuarios
+                            </a>
+                            <a href="{{ route('usuarios.create') }}" 
+                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
+                                Nuevo Usuario
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Dropdown de Solicitudes -->
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" 
+                                class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium {{ in_array($active, ['solicitudes', 'pet-requests']) ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600' }} transition-colors duration-200">
+                            <div class="flex items-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                                <span>Solicitudes</span>
+                                @if($pendingRequests > 0)
+                                    <span class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white">{{ $pendingRequests }}</span>
+                                @endif
+                            </div>
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 transform scale-100"
+                             x-transition:leave-end="opacity-0 transform scale-95"
+                             class="ml-4 mt-1 space-y-1">
+                            <a href="{{ route('dashboard.solicitudes') }}" 
+                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-orange-50 hover:text-orange-600 transition-colors duration-200 {{ $active === 'solicitudes' ? 'bg-orange-50 text-orange-600' : '' }}">
+                                Solicitudes de Usuarios
+                            </a>
+                            <a href="{{ route('pet-requests.index') }}" 
+                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 {{ $active === 'pet-requests' ? 'bg-blue-50 text-blue-600' : '' }}">
+                                Solicitudes de Mascotas
+                            </a>
+                        </div>
+                    </div>
                     <a href="{{ route('qr.generator') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'qr-generator' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600' }}">Generador QR</a>
+                    <a href="{{ route('dashboard.administrador.asignar-veterinario') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'asignar-veterinario' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-green-50 hover:text-green-600' }}">Asignar Veterinarios</a>
                 @endif
                 <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-purple-50 hover:text-purple-700">Perfil</a>
             </nav>
@@ -80,49 +148,103 @@
 
                     @if(auth()->user()->hasRole('administrador') || auth()->user()->hasRole('super_admin'))
                         <!-- Menú desplegable de Usuarios -->
-                        <div class="space-y-2">
-                            <div class="group flex w-full items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300 transition-all duration-200">
-                                <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <div x-data="{ open: {{ $active === 'usuarios' ? 'true' : 'false' }} }" class="space-y-2">
+                            <button @click="open = !open" 
+                                    class="group flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300 transition-all duration-200">
+                                <div class="flex items-center">
+                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    <span class="truncate">Usuarios</span>
+                                </div>
+                                <svg class="h-4 w-4 text-gray-400 transition-transform duration-200" 
+                                     :class="{ 'rotate-180': open }" 
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                 </svg>
-                                <span class="flex-1 truncate">Usuarios</span>
-                            </div>
-                            <div class="space-y-1 pl-8 sm:pl-11">
+                            </button>
+                            <div x-show="open" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 transform scale-95"
+                                 x-transition:enter-end="opacity-100 transform scale-100"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="opacity-100 transform scale-100"
+                                 x-transition:leave-end="opacity-0 transform scale-95"
+                                 class="space-y-1 pl-8 sm:pl-11">
                                 <a href="{{ route('dashboard.usuarios') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
+                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium {{ $active === 'usuarios' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
+                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
                                     <span class="truncate">Lista de Usuarios</span>
                                 </a>
                                 <a href="{{ route('usuarios.create') }}"
                                    class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
+                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
                                     <span class="truncate">Nuevo Usuario</span>
                                 </a>
                             </div>
                         </div>
 
-                        <!-- Solicitudes -->
-                        <a href="{{ route('dashboard.solicitudes') }}"
-                            @class([
-                                 'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
-                                 'bg-orange-100 text-orange-700 border-l-4 border-orange-500 shadow-sm' => $active === 'solicitudes',
-                                 'text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-l-4 hover:border-orange-300' => $active !== 'solicitudes'
-                            ])>
-                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
-                                 @class([
-                                     'text-orange-600' => $active === 'solicitudes',
-                                     'text-gray-500 group-hover:text-orange-500' => $active !== 'solicitudes'
-                                 ])
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            <span class="truncate">Solicitudes</span>
-                            @if($pendingRequests > 0)
-                                <span class="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white shadow-sm">
-                                    {{ $pendingRequests }}
-                                </span>
-                            @endif
-                        </a>
+                        <!-- Dropdown de Solicitudes -->
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" 
+                                    @class([
+                                         'group flex items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200 w-full',
+                                         'bg-orange-100 text-orange-700 border-l-4 border-orange-500 shadow-sm' => in_array($active, ['solicitudes', 'pet-requests']),
+                                         'text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-l-4 hover:border-orange-300' => !in_array($active, ['solicitudes', 'pet-requests'])
+                                    ])>
+                                <div class="flex items-center">
+                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
+                                         @class([
+                                             'text-orange-600' => in_array($active, ['solicitudes', 'pet-requests']),
+                                             'text-gray-500 group-hover:text-orange-500' => !in_array($active, ['solicitudes', 'pet-requests'])
+                                         ])
+                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <span class="truncate">Solicitudes</span>
+                                    @if($pendingRequests > 0)
+                                        <span class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white shadow-sm">
+                                            {{ $pendingRequests }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            
+                            <div x-show="open" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 transform scale-95"
+                                 x-transition:enter-end="opacity-100 transform scale-100"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="opacity-100 transform scale-100"
+                                 x-transition:leave-end="opacity-0 transform scale-95"
+                                 class="ml-4 mt-1 space-y-1">
+                                <a href="{{ route('dashboard.solicitudes') }}" 
+                                   @class([
+                                        'block px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
+                                        'bg-orange-50 text-orange-600' => $active === 'solicitudes',
+                                        'text-gray-500 hover:bg-orange-50 hover:text-orange-600' => $active !== 'solicitudes'
+                                   ])>
+                                    <span class="truncate">Solicitudes de Usuarios</span>
+                                </a>
+                                <a href="{{ route('pet-requests.index') }}" 
+                                   @class([
+                                        'block px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
+                                        'bg-blue-50 text-blue-600' => $active === 'pet-requests',
+                                        'text-gray-500 hover:bg-blue-50 hover:text-blue-600' => $active !== 'pet-requests'
+                                   ])>
+                                    <span class="truncate">Solicitudes de Mascotas</span>
+                                </a>
+                            </div>
+                        </div>
 
                         <!-- Generador de QR -->
                         <a href="{{ route('qr.generator') }}"
@@ -142,6 +264,25 @@
                             </svg>
                             <span class="truncate">Generador QR</span>
                         </a>
+
+                        <!-- Asignar Veterinarios -->
+                        <a href="{{ route('dashboard.administrador.asignar-veterinario') }}"
+                            @class([
+                                 'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
+                                 'bg-green-100 text-green-700 border-l-4 border-green-500 shadow-sm' => $active === 'asignar-veterinario',
+                                 'text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300' => $active !== 'asignar-veterinario'
+                            ])>
+                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
+                                 @class([
+                                     'text-green-600' => $active === 'asignar-veterinario',
+                                     'text-gray-500 group-hover:text-green-500' => $active !== 'asignar-veterinario'
+                                 ])
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span class="truncate">Asignar Veterinarios</span>
+                        </a>
                     @endif
                     <!-- Enlace de perfil -->
                     <a href="{{ route('profile.edit') }}" class="group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-colors duration-200">
@@ -150,18 +291,29 @@
                         </svg>
                         <span class="truncate">Perfil</span>
                     </a>
-                                <!-- Botón de logout fijo en la parte inferior -->
-            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200">
-                        <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <span class="truncate">Cerrar sesión</span>
-                    </button>
-                </form>
-            </div>
+                    
+                    <!-- Botón de notificaciones solo para móviles -->
+                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 sm:hidden">
+                        <a href="{{ route('dashboard.cliente.notificaciones') }}" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200">
+                            <svg class="mr-3 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4 12h16M4 16h16M4 20h16"></path>
+                            </svg>
+                            <span class="truncate">Notificaciones</span>
+                        </a>
+                    </div>
+                    
+                    <!-- Botón de logout en sidebar de PC -->
+                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span class="truncate">Cerrar sesión</span>
+                            </button>
+                        </form>
+                    </div>
         </div>
                 </nav>
             </div>

@@ -14,6 +14,11 @@ class VaccinationRecord extends Model
     const TYPE_CHECKUP = 'checkeo';
     const TYPE_GROOMING = 'peluqueria';
     const TYPE_SURGERY = 'operacion';
+    const TYPE_EMERGENCY = 'emergencia';
+    const TYPE_DENTAL = 'dental';
+    const TYPE_DERMATOLOGY = 'dermatologia';
+    const TYPE_NEUROLOGY = 'neurologia';
+    const TYPE_CARDIOLOGY = 'cardiologia';
 
     /**
      * Obtener las opciones de tipos de registros médicos
@@ -24,7 +29,12 @@ class VaccinationRecord extends Model
             self::TYPE_VACCINATION => 'Vacunación',
             self::TYPE_CHECKUP => 'Cita de control',
             self::TYPE_GROOMING => 'Peluquería/Estética',
-            self::TYPE_SURGERY => 'Operación/Cirugía'
+            self::TYPE_SURGERY => 'Operación/Cirugía',
+            self::TYPE_EMERGENCY => 'Emergencia',
+            self::TYPE_DENTAL => 'Consulta dental',
+            self::TYPE_DERMATOLOGY => 'Dermatología',
+            self::TYPE_NEUROLOGY => 'Neurología',
+            self::TYPE_CARDIOLOGY => 'Cardiología'
         ];
     }
 
@@ -67,5 +77,40 @@ class VaccinationRecord extends Model
     public function pet()
     {
         return $this->belongsTo(Pet::class);
+    }
+
+    /**
+     * Obtener vacunas comunes por especie
+     */
+    public static function getVaccinesBySpecies($species)
+    {
+        $vaccines = [
+            'perro' => [
+                'Rabia',
+                'DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)',
+                'Bordetella (Tos de las perreras)',
+                'Leptospirosis',
+                'Lyme (Enfermedad de Lyme)',
+                'Giardia',
+                'Coronavirus',
+                'Adenovirus Tipo 2',
+                'Parainfluenza',
+                'Bordetella Bronchiseptica'
+            ],
+            'gato' => [
+                'Rabia',
+                'FVRCP (Rinotraqueitis, Calicivirus, Panleucopenia)',
+                'Leucemia Felina (FeLV)',
+                'Inmunodeficiencia Felina (FIV)',
+                'Chlamydia',
+                'Bordetella',
+                'Giardia',
+                'Peritonitis Infecciosa Felina (PIF)',
+                'Herpesvirus Felino',
+                'Calicivirus Felino'
+            ]
+        ];
+
+        return $vaccines[strtolower($species)] ?? [];
     }
 }

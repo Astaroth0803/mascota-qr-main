@@ -34,7 +34,7 @@
         </dl>
 
         <div class="flex justify-end mt-4 space-x-2">
-            <x-button-link href="{{ route('dashboard.cliente.mascotas.show', $pet->id) }}" size="sm">
+            <x-button-link href="{{ route('dashboard.cliente.mascotas.show', $pet) }}" size="sm">
                 Ver Detalles
             </x-button-link>
         </div>

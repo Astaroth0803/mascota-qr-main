@@ -5,7 +5,7 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Dashboard - Pet Management') }}
             </h2>
-            <a href="{{ route('dashboard.cliente.registrar.mascota') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            <a href="{{ route('mascotaqr') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                 Agregar Nueva Mascota
             </a>
         </div>

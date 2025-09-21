@@ -17,7 +17,7 @@
         <header>
             <!-- Aquí puedes agregar un navbar si lo deseas -->
         </header>
-        <x-sidebar-menu" />
+        <x-sidebar-menu />
             @yield('content') <!-- Esta sección se sobrescribirá por las vistas hijas -->
             
         </main>

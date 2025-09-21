@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\VaccinationRecord;
+use App\Services\DataEncryptionService;
+use Illuminate\Support\Facades\Log;
 
 class Pet extends Model
 {
@@ -13,6 +15,7 @@ class Pet extends Model
     // Campos que se pueden asignar masivamente
     protected $fillable = [
         'nombre',
+        'slug',
         'especie',
         'raza',
         'otra_raza',
@@ -30,6 +33,46 @@ class Pet extends Model
         'user_id',
     ];
 
+    // Campos que deben ser encriptados
+    protected $encrypted = [
+        'telefono_owner',
+        'id_pago_yappy'
+    ];
+
+    // Campos que deben ser desencriptados automáticamente
+    protected $casts = [
+        'edad_anios' => 'integer',
+        'edad_meses' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+
+    /**
+     * Genera un slug único basado en el nombre de la mascota
+     */
+    public function generateSlug()
+    {
+        $slug = \Str::slug($this->nombre);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (static::where('slug', $slug)->where('id', '!=', $this->id ?? 0)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Obtiene la ruta de la mascota usando el slug
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
     // Relación con el modelo Payment (uno a uno)
     public function payment()
     {
@@ -39,6 +82,42 @@ class Pet extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relación con veterinarios asignados
+     */
+    public function veterinarios()
+    {
+        return $this->belongsToMany(User::class, 'mascota_veterinario', 'mascota_id', 'veterinario_id')
+                    ->withPivot(['fecha_asignacion', 'activo', 'tipo_asignacion', 'notas'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Veterinario principal asignado
+     */
+    public function veterinarioPrincipal()
+    {
+        return $this->veterinarios()
+                    ->wherePivot('tipo_asignacion', 'principal')
+                    ->wherePivot('activo', true);
+    }
+
+    /**
+     * Veterinarios activos asignados
+     */
+    public function veterinariosActivos()
+    {
+        return $this->veterinarios()->wherePivot('activo', true);
+    }
+
+    /**
+     * Asignaciones de veterinarios (tabla pivot)
+     */
+    public function asignacionesVeterinarios()
+    {
+        return $this->hasMany(MascotaVeterinario::class, 'mascota_id');
     }
 
     /**
@@ -62,5 +141,84 @@ class Pet extends Model
         }
 
         return parent::load($relations);
+    }
+
+    /**
+     * Boot del modelo para manejar encriptación automática
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Generar slug automáticamente
+        static::creating(function ($pet) {
+            if (empty($pet->slug)) {
+                $pet->slug = $pet->generateSlug();
+            }
+        });
+
+        static::updating(function ($pet) {
+            if ($pet->isDirty('nombre') && empty($pet->slug)) {
+                $pet->slug = $pet->generateSlug();
+            }
+        });
+
+        // Encriptar datos sensibles antes de guardar
+        static::saving(function ($pet) {
+            $encryptionService = new DataEncryptionService();
+            
+            foreach ($pet->encrypted as $field) {
+                if (isset($pet->attributes[$field]) && !empty($pet->attributes[$field])) {
+                    try {
+                        $pet->attributes[$field] = $encryptionService->encrypt($pet->attributes[$field]);
+                    } catch (\Exception $e) {
+                        Log::error("Error al encriptar campo {$field} en mascota {$pet->id}", [
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            }
+        });
+
+        // Desencriptar datos sensibles después de cargar
+        static::retrieved(function ($pet) {
+            $encryptionService = new DataEncryptionService();
+            
+            foreach ($pet->encrypted as $field) {
+                if (isset($pet->attributes[$field]) && !empty($pet->attributes[$field])) {
+                    try {
+                        $pet->attributes[$field] = $encryptionService->decrypt($pet->attributes[$field]);
+                    } catch (\Exception $e) {
+                        Log::error("Error al desencriptar campo {$field} en mascota {$pet->id}", [
+                            'error' => $e->getMessage()
+                        ]);
+                        // Mantener valor encriptado si falla la desencriptación
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Obtiene un atributo desencriptado
+     */
+    public function getAttribute($key)
+    {
+        $value = parent::getAttribute($key);
+        
+        if (in_array($key, $this->encrypted) && !empty($value)) {
+            try {
+                $encryptionService = new DataEncryptionService();
+                return $encryptionService->decrypt($value);
+            } catch (\Exception $e) {
+                Log::error("Error al desencriptar atributo {$key}", [
+                    'pet_id' => $this->id,
+                    'error' => $e->getMessage()
+                ]);
+                return $value; // Retornar valor original si falla
+            }
+        }
+        
+        return $value;
     }
 }

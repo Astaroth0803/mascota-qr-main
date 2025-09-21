@@ -29,7 +29,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('dashboard.administrador', compact(
+        return view('dashboard.administrador.index', compact(
             'totalUsers',
             'totalPets',
             'pendingRequests',

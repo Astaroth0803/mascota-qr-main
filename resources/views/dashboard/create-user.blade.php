@@ -8,13 +8,13 @@
         </div>
     </x-slot>
 
-    <div class="py-6 ml-64" id="main-content">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-200">
+    <div class="py-4 sm:py-6 lg:ml-64" id="main-content">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-4 sm:p-6 border border-gray-200">
                 <form action="{{ route('usuarios.store') }}" method="POST" class="space-y-6">
                     @csrf
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <!-- Nombre -->
                         <div class="space-y-2">
                             <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -22,7 +22,7 @@
                             </label>
                             <div class="relative">
                                 <input type="text" name="name" id="name" value="{{ old('name') }}" 
-                                       class="w-full p-2 pl-10 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
+                                       class="w-full p-2 sm:p-3 pl-10 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror text-sm sm:text-base"
                                        placeholder="Nombre completo">
                                 <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -40,7 +40,7 @@
                             </label>
                             <div class="relative">
                                 <input type="email" name="email" id="email" value="{{ old('email') }}"
-                                       class="w-full p-2 pl-10 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror"
+                                       class="w-full p-2 sm:p-3 pl-10 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror text-sm sm:text-base"
                                        placeholder="correo@ejemplo.com">
                                 <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -91,15 +91,16 @@
                     <!-- Roles -->
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Roles
+                            Roles <span class="text-gray-500">(Opcional)</span>
                         </label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             @foreach($roles as $role)
                                 <div class="flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200">
-                                    <input type="radio" name="roles" value="{{ $role->name }}" id="role_{{ $role->id }}"
-                                           class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 single-role-radio">
+                                    <input type="checkbox" name="roles[]" value="{{ $role->name }}" id="role_{{ $role->id }}"
+                                           class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                           {{ in_array($role->name, old('roles', [])) ? 'checked' : '' }}>
                                     <label for="role_{{ $role->id }}" class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        {{ $role->name }}
+                                        {{ ucfirst(str_replace('_', ' ', $role->name)) }}
                                     </label>
                                 </div>
                             @endforeach

@@ -43,7 +43,7 @@
             @endif
 
             <div class="mb-4">
-                <a href="{{ route('dashboard.cliente') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition">Volver al Dashboard</a>
+                <a href="{{ route('dashboard.cliente.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition">Volver al Dashboard</a>
             </div>
         </div>
     @else

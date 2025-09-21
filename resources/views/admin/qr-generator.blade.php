@@ -1,23 +1,37 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="transition-all duration-300 ease-in-out lg:ml-64">
-            <div class="bg-white overflow-hidden shadow rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300 mb-8 mx-2 sm:mx-4 lg:mx-8">
-                <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
-                    <h2 class="font-semibold text-lg sm:text-xl text-gray-800 leading-tight">
-                        {{ __('Generador de Códigos QR - Mascotas') }}
-                    </h2>
+@extends('layouts.dashboard')
+
+@section('title', 'Generador de Códigos QR')
+
+@section('content')
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="lg:ml-64">
+            <div class="px-4 sm:px-6 lg:px-8">
+                <div class="py-4 lg:py-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <h1 class="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">Generador de Códigos QR</h1>
+                            <p class="text-sm lg:text-base text-gray-600 mt-1">Genera códigos QR para las mascotas registradas</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 lg:gap-3">
+                            <a href="{{ route('dashboard.administrador') }}" 
+                               class="inline-flex items-center justify-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
+                                <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                </svg>
+                                <span>Volver al Dashboard</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </x-slot>
+    </div>
 
-    {{-- Incluir el sidebar como componente --}}
-    <x-sidebar-menu :active="'qr-generator'" :pendingRequests="$solicitudCount ?? 0" />
-
-    {{-- Contenido principal --}}
-    <div class="lg:ml-64 transition-all duration-300 ease-in-out">
-        <div class="min-h-screen bg-gray-50">
-            <div class="p-4 sm:p-6 lg:p-8 mt-4">
+    <!-- Contenido principal -->
+    <div class="lg:ml-64">
+        <div class="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
                 {{-- Botones de acción --}}
                 <div class="mb-6 flex flex-col sm:flex-row gap-4">
                     <button id="selectAllBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
@@ -271,12 +285,15 @@
 
         // Generar QR para una sola mascota
         function generateSingleQR(petId) {
-            fetch(`/dashboard/cliente/mascotas/${petId}/generate-qr`, {
+            fetch(`/dashboard/administrador/qr/generate-single`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
+                },
+                body: JSON.stringify({
+                    pet_id: petId
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -433,5 +450,5 @@
             });
         }
     </script>
-</x-app-layout>
+@endsection
 

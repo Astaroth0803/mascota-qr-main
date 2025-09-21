@@ -15,16 +15,38 @@ use App\Models\VaccinationRecord;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use App\Services\QRCodeService;
+use App\Services\FileValidationService;
+use App\Services\InputSanitizationService;
+use App\Services\QRCodeValidationService;
+use App\Services\DataEncryptionService;
+use App\Services\DashboardService;
 
 class PetController extends Controller
 {
     protected $paymentService;
     protected $qrCodeService;
+    protected $fileValidationService;
+    protected $inputSanitizationService;
+    protected $qrCodeValidationService;
+    protected $dataEncryptionService;
+    protected $dashboardService;
 
-    public function __construct(PaymentService $paymentService, QRCodeService $qrCodeService)
-    {
+    public function __construct(
+        PaymentService $paymentService, 
+        QRCodeService $qrCodeService,
+        FileValidationService $fileValidationService,
+        InputSanitizationService $inputSanitizationService,
+        QRCodeValidationService $qrCodeValidationService,
+        DataEncryptionService $dataEncryptionService,
+        DashboardService $dashboardService
+    ) {
         $this->paymentService = $paymentService;
         $this->qrCodeService = $qrCodeService;
+        $this->fileValidationService = $fileValidationService;
+        $this->inputSanitizationService = $inputSanitizationService;
+        $this->qrCodeValidationService = $qrCodeValidationService;
+        $this->dataEncryptionService = $dataEncryptionService;
+        $this->dashboardService = $dashboardService;
     }
 
     /**
@@ -32,7 +54,8 @@ class PetController extends Controller
      */
     public function create()
     {
-        return view('mascotas.create');
+        // Redirigir al formulario principal de registro de mascotas
+        return redirect()->route('mascotaqr');
     }
 
     // Método para crear la mascota, mantenemos el mismo
@@ -109,6 +132,7 @@ class PetController extends Controller
         $userId = $user->id;
         $userEmail = $user->email;
 
+        // Obtener mascotas del usuario
         $pets = Pet::with(['payment', 'vaccinationRecords'])
             ->where(function ($query) use ($userId, $userEmail) {
                 $query->where('user_id', $userId)
@@ -116,16 +140,16 @@ class PetController extends Controller
             })
             ->get();
 
-        $statistics = [
-            'total_pets' => $pets->count(),
-            'pending_vaccinations' => VaccinationRecord::whereHas('pet', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })->count(),
-            'upcoming_appointments' => [],
-            'recent_activities' => []
-        ];
+        // Obtener estadísticas mejoradas
+        $stats = $this->dashboardService->getClientStats($userId);
+        
+        // Obtener notificaciones
+        $notifications = $this->dashboardService->getClientNotifications($userId);
+        
+        // Obtener citas próximas
+        $upcomingAppointments = $this->dashboardService->getUpcomingAppointments($userId);
 
-        return view('dashboard.cliente', compact('pets', 'statistics'));
+        return view('dashboard.cliente.index', compact('pets', 'stats', 'notifications', 'upcomingAppointments'));
     }
 
     // Método para el dashboard del administrador
@@ -134,17 +158,29 @@ class PetController extends Controller
         // Solo los administradores pueden acceder aquí
         $pets = Pet::with('payment')->get(); // Obtener todas las mascotas
 
-        // Obtener el total de usuarios
-        $userCount = User::count();
+        // Obtener estadísticas mejoradas
+        $stats = $this->dashboardService->getAdminStats();
+        
+        // Obtener alertas de seguridad
+        $securityAlerts = $this->dashboardService->getSecurityAlerts();
 
-        // Obtener el total de solicitudes pendientes
-        $solicitudCount = Solicitud::count();
+        return view('dashboard.administrador.index', compact('pets', 'stats', 'securityAlerts'));
+    }
 
-        // Datos de ejemplo para los gráficos (deberás reemplazarlos con datos reales)
-        $userDataForChart = [15, 18, 16, 19, 17, 20, 18]; // Ejemplo de actividad de usuarios por día/semana/mes
-        $petDistributionData = ['Perros' => 10, 'Gatos' => 5, 'Otros' => 3]; // Ejemplo de distribución por especie
-
-        return view('dashboard.administrador', compact('pets', 'userCount', 'solicitudCount', 'userDataForChart', 'petDistributionData'));
+    /**
+     * Muestra todas las notificaciones del cliente
+     */
+    public function clientNotifications()
+    {
+        $userId = Auth::id();
+        
+        // Marcar todas las notificaciones como leídas al acceder a la vista
+        \App\Models\NotificationRead::markAllAsRead($userId);
+        
+        // Obtener todas las notificaciones del cliente (incluyendo las leídas)
+        $notifications = $this->dashboardService->getClientNotifications($userId, true);
+        
+        return view('dashboard.client-notifications', compact('notifications'));
     }
 
     // Método para mostrar las solicitudes pendientes (solo para administradores)
@@ -185,12 +221,12 @@ class PetController extends Controller
     /**
      * Muestra los detalles de una mascota específica (con caché ajustada).
      */
-    public function show($id)
+    public function show(Pet $pet)
     {
-        // Primero, obtener la mascota para tener su ID y updated_at
-        $pet = Pet::with('payment')->findOrFail($id);
+        // Cargar la relación de pago
+        $pet->load('payment');
 
-         // Opcional: Verificar que el usuario tenga permiso para ver esta mascota ANTES de cachear
+        // Opcional: Verificar que el usuario tenga permiso para ver esta mascota ANTES de cachear
         if (!Auth::user()->can('ver_mascotas') ||
             (Auth::user()->id !== $pet->user_id && Auth::user()->email !== $pet->correo_owner)) {
             return redirect()->route('dashboard.cliente')
@@ -223,10 +259,8 @@ class PetController extends Controller
     /**
      * Muestra el formulario para editar una mascota
      */
-    public function edit($id)
+    public function edit(Pet $pet)
     {
-        $pet = Pet::findOrFail($id);
-
         // Verificar que el usuario tenga permiso para editar esta mascota
         if (!Auth::user()->can('ver_mascotas') ||
             (Auth::user()->id !== $pet->user_id && Auth::user()->email !== $pet->correo_owner)) {
@@ -249,6 +283,9 @@ class PetController extends Controller
                 ->with('error', 'No tienes permiso para editar esta mascota.');
         }
 
+        // Sanitizar datos de entrada
+        $sanitizedData = $this->inputSanitizationService->sanitizeFormData($request->all());
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'especie' => 'required|string|max:255',
@@ -260,14 +297,30 @@ class PetController extends Controller
             'vaccine_file' => 'nullable|file|mimes:pdf,doc,docx|max:10240'
         ]);
 
+        // Validar archivos con el servicio de validación mejorado
+        if ($request->hasFile('profile_image')) {
+            $fileValidation = $this->fileValidationService->processFileSecurely($request->file('profile_image'), 'image');
+            if (!$fileValidation['success']) {
+                return redirect()->back()->withErrors(['profile_image' => implode(', ', $fileValidation['errors'])]);
+            }
+        }
+
+        if ($request->hasFile('vaccine_file')) {
+            $fileValidation = $this->fileValidationService->processFileSecurely($request->file('vaccine_file'), 'document');
+            if (!$fileValidation['success']) {
+                return redirect()->back()->withErrors(['vaccine_file' => implode(', ', $fileValidation['errors'])]);
+            }
+        }
+
         // Manejar la imagen de perfil
         if ($request->hasFile('profile_image')) {
             // Eliminar la imagen anterior si existe
             if ($pet->profile_image) {
                 Storage::delete($pet->profile_image);
             }
-            // Guardar la nueva imagen
-            $path = $request->file('profile_image')->store('pets/profile-images', 'public');
+            // Generar nombre seguro y guardar
+            $secureFileName = $this->fileValidationService->generateSecureFileName($request->file('profile_image'), 'profile_');
+            $path = $request->file('profile_image')->storeAs('pets/profile-images', $secureFileName, 'public');
             $pet->profile_image = $path;
         }
 
@@ -277,19 +330,36 @@ class PetController extends Controller
             if ($pet->vaccine_file) {
                 Storage::delete($pet->vaccine_file);
             }
-            // Guardar el nuevo archivo
-            $path = $request->file('vaccine_file')->store('pets/vaccine-files', 'public');
+            // Generar nombre seguro y guardar
+            $secureFileName = $this->fileValidationService->generateSecureFileName($request->file('vaccine_file'), 'vaccine_');
+            $path = $request->file('vaccine_file')->storeAs('pets/vaccine-files', $secureFileName, 'public');
             $pet->vaccine_file = $path;
         }
 
-        // Actualizar los demás campos
-        $pet->update([
-            'nombre' => $validated['nombre'],
-            'especie' => $validated['especie'],
-            'raza' => $validated['raza'],
+        // Preparar datos para actualización con encriptación
+        $updateData = [
+            'nombre' => $sanitizedData['nombre'],
+            'especie' => $sanitizedData['especie'],
+            'raza' => $sanitizedData['raza'],
             'edad_anios' => $validated['edad_anios'],
             'edad_meses' => $validated['edad_meses'],
-            'sexo' => $validated['sexo']
+            'sexo' => $sanitizedData['sexo']
+        ];
+
+        // Encriptar datos sensibles si existen
+        if (isset($sanitizedData['telefono_owner'])) {
+            $updateData['telefono_owner'] = $this->dataEncryptionService->encrypt($sanitizedData['telefono_owner']);
+        }
+
+        // Actualizar la mascota
+        $pet->update($updateData);
+
+        // Log de la actualización
+        Log::info('Mascota actualizada con mejoras de seguridad', [
+            'pet_id' => $pet->id,
+            'user_id' => Auth::id(),
+            'updated_fields' => array_keys($updateData),
+            'ip' => $request->ip()
         ]);
 
         return redirect()->route('dashboard.cliente.mascotas.show', $pet)
@@ -639,17 +709,51 @@ class PetController extends Controller
                 ->with('error', 'No tienes permiso para generar el código QR de esta mascota.');
         }
 
-        $qrCode = $this->qrCodeService->assignQRCode($pet);
-        $publicUrl = $this->qrCodeService->generatePublicUrl($pet);
+        try {
+            // Generar código QR único y validado
+            $qrCode = $this->qrCodeValidationService->generateUniqueQRCode($pet->id);
+            
+            // Validar el código generado
+            $validation = $this->qrCodeValidationService->verifyQRCodeIntegrity($qrCode);
+            if (!$validation['is_valid']) {
+                throw new \Exception('Código QR generado no es válido: ' . implode(', ', $validation['errors']));
+            }
 
-        return response()->json([
-            'success' => true,
-            'pet_name' => $pet->nombre, // 👈 agrega esto
-            'qr_code' => $qrCode,
-            'public_url' => $publicUrl,
-            'qr_image_url' => $this->qrCodeService->generateQRImageUrl($publicUrl, 300),
-            'message' => 'Código QR generado correctamente'
-        ]);
+            // Asignar el código QR a la mascota
+            $pet->update(['qr_code' => $qrCode]);
+            
+            $publicUrl = $this->qrCodeService->generatePublicUrl($pet);
+
+            // Log de la generación
+            Log::info('Código QR generado con validación de seguridad', [
+                'pet_id' => $pet->id,
+                'user_id' => Auth::id(),
+                'qr_code' => $qrCode,
+                'ip' => request()->ip()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'pet_name' => $pet->nombre,
+                'qr_code' => $qrCode,
+                'public_url' => $publicUrl,
+                'qr_image_url' => $this->qrCodeService->generateQRImageUrl($publicUrl, 300),
+                'message' => 'Código QR generado correctamente'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al generar código QR', [
+                'pet_id' => $pet->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'ip' => request()->ip()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar el código QR: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -666,6 +770,90 @@ class PetController extends Controller
         $solicitudCount = Solicitud::count();
         
         return view('admin.qr-generator', compact('pets', 'solicitudCount'));
+    }
+
+    /**
+     * Genera código QR para una sola mascota
+     */
+    public function generateSingleQRCode(Request $request)
+    {
+        Log::info('generateSingleQRCode called', [
+            'request_data' => $request->all(),
+            'user_id' => Auth::id(),
+            'user_roles' => Auth::user()->getRoleNames()
+        ]);
+
+        // Solo administradores pueden acceder
+        if (!Auth::user()->hasAnyRole(['administrador', 'super_admin'])) {
+            Log::warning('Unauthorized access to generateSingleQRCode', [
+                'user_id' => Auth::id(),
+                'user_roles' => Auth::user()->getRoleNames()
+            ]);
+            return response()->json(['error' => 'No tienes permisos para realizar esta acción.'], 403);
+        }
+
+        try {
+            $request->validate([
+                'pet_id' => 'required|integer|exists:pets,id'
+            ]);
+
+            $pet = Pet::findOrFail($request->pet_id);
+            Log::info('Pet found for QR generation', ['pet_id' => $pet->id, 'pet_name' => $pet->nombre]);
+            
+            // Generar código QR único
+            $qrCode = $this->qrCodeService->generateUniqueQRCode($pet);
+            Log::info('QR code generated', ['qr_code' => $qrCode]);
+            
+            // Actualizar la mascota con el código QR
+            $pet->update([
+                'qr_code' => $qrCode
+            ]);
+
+            // Generar URL pública
+            $publicUrl = route('public.pet.qr', $qrCode);
+            Log::info('Public URL generated', ['public_url' => $publicUrl]);
+
+            // Log de actividad
+            \App\Models\ActivityLog::log(
+                'qr_generated',
+                "Código QR generado para mascota: {$pet->nombre}",
+                $pet
+            );
+
+            $response = [
+                'success' => true,
+                'pet_id' => $pet->id,
+                'pet_name' => $pet->nombre,
+                'qr_code' => $qrCode,
+                'public_url' => $publicUrl,
+                'qr_image_url' => "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($publicUrl)
+            ];
+
+            Log::info('QR generation successful', $response);
+            return response()->json($response);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error in generateSingleQRCode', [
+                'errors' => $e->errors(),
+                'user_id' => Auth::id()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error al generar código QR individual', [
+                'pet_id' => $request->pet_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar el código QR: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -711,6 +899,105 @@ class PetController extends Controller
         $solicitudCount = Solicitud::count();
 
         return view('admin.user-pets', compact('user', 'pets', 'solicitudCount'));
+    }
+
+    /**
+     * Valida un código QR en tiempo real (para AJAX)
+     */
+    public function validateQRCodeRealTime(Request $request)
+    {
+        $request->validate([
+            'qr_code' => 'required|string|max:100',
+            'exclude_pet_id' => 'nullable|integer|exists:pets,id'
+        ]);
+
+        $qrCode = $request->input('qr_code');
+        $excludePetId = $request->input('exclude_pet_id');
+
+        try {
+            $result = $this->qrCodeValidationService->validateQRCodeRealTime($qrCode, $excludePetId);
+            
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Error en validación de código QR en tiempo real', [
+                'qr_code' => $qrCode,
+                'error' => $e->getMessage(),
+                'ip' => $request->ip()
+            ]);
+
+            return response()->json([
+                'valid' => false,
+                'message' => 'Error interno del servidor',
+                'qr_code' => $qrCode
+            ], 500);
+        }
+    }
+
+    /**
+     * Muestra el log de actividades del sistema
+     */
+    public function activityLog(Request $request)
+    {
+        // Obtener filtros de la solicitud
+        $search = $request->input('search');
+        $type = $request->input('type');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        // Crear query base para el log de actividades
+        $query = \App\Models\ActivityLog::query();
+
+        // Aplicar filtros
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('description', 'like', '%' . $search . '%')
+                      ->orWhere('model_type', 'like', '%' . $search . '%')
+                      ->orWhere('user_id', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($type) {
+            $query->where('action', $type);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        // Obtener logs con paginación y relaciones
+        $activities = $query->with(['user'])
+                           ->orderBy('created_at', 'desc')
+                           ->paginate(20);
+
+        // Obtener estadísticas del log
+        $stats = [
+            'total_activities' => \App\Models\ActivityLog::count(),
+            'today_activities' => \App\Models\ActivityLog::whereDate('created_at', today())->count(),
+            'this_week_activities' => \App\Models\ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'this_month_activities' => \App\Models\ActivityLog::whereMonth('created_at', now()->month)->count(),
+        ];
+
+        // Obtener tipos de acciones únicos para el filtro
+        $eventTypes = \App\Models\ActivityLog::distinct()->pluck('action')->filter()->values();
+
+        return view('dashboard.activity-log', compact('activities', 'stats', 'eventTypes'));
+    }
+
+    /**
+     * Mostrar historial de vacunación (solo lectura para clientes)
+     */
+    public function vaccinationHistory(Pet $pet)
+    {
+        // Verificar que el usuario puede ver el historial médico
+        $this->authorize('view', $pet, \App\Policies\MedicalHistoryPolicy::class);
+        
+        $vaccinationRecords = $pet->vaccinationRecords()->orderBy('fecha_aplicacion', 'desc')->get();
+        
+        return view('mascotas.vaccination-history', compact('pet', 'vaccinationRecords'));
     }
 }
 

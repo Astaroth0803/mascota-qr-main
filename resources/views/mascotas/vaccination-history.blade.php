@@ -15,7 +15,7 @@
         <div class="min-h-screen bg-gray-50">
             <div class="p-4 sm:p-6 lg:p-8">
                 <div class="mb-4 sm:mb-6">
-                    <a href="{{ route('dashboard.cliente.mascotas.show', $pet->id) }}"
+                    <a href="{{ route('dashboard.cliente.mascotas.show', $pet) }}"
                        class="flex items-center text-sm text-blue-600 hover:text-blue-800">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -208,7 +208,7 @@
 
                     {{-- Contenido: Formulario para agregar registro --}}
                     <div id="addRecordTab" class="px-4 sm:px-6 py-4 sm:py-6 hidden">
-                        <form action="{{ route('dashboard.cliente.mascotas.vaccination-records.store', $pet->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4 sm:space-y-6">
+                        <form action="{{ route('dashboard.cliente.mascotas.vaccination-records.store', $pet) }}" method="POST" enctype="multipart/form-data" class="space-y-4 sm:space-y-6">
                             @csrf
 
                             {{-- Tipo de registro --}}

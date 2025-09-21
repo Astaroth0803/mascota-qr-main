@@ -110,6 +110,50 @@ class UserController extends Controller
         return view('dashboard.create-user', compact('roles')); // Pasar los roles a la vista
     }
 
+    // Crear un nuevo usuario
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,name',
+        ], [
+            'name.required' => 'El nombre es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico debe ser válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'roles.array' => 'Los roles deben ser una lista válida.',
+            'roles.*.exists' => 'Uno de los roles seleccionados no es válido.',
+        ]);
+
+        // Crear el usuario
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        // Asignar roles si se proporcionaron
+        if ($request->has('roles') && !empty($request->roles)) {
+            $user->assignRole($request->roles);
+        }
+
+        // Enviar credenciales por email
+        try {
+            Mail::to($user->email)->send(new UserCredentialsMail($user, $request->password));
+        } catch (\Exception $e) {
+            // Log del error pero no fallar la creación del usuario
+            \Log::error('Error enviando credenciales por email: ' . $e->getMessage());
+        }
+
+        return redirect()->route('dashboard.usuarios')->with('success', 'Usuario creado exitosamente. Las credenciales han sido enviadas por email.');
+    }
+
     // Ver roles de un usuario
     public function showRoles($id)
     {
