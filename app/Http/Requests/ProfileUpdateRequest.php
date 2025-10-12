@@ -15,7 +15,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -26,5 +26,13 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
+
+        // Agregar reglas específicas para veterinarios
+        if ($this->user()->hasRole('veterinario')) {
+            $rules['tipo_veterinario'] = ['required', 'in:auxiliar,tecnico,licenciado'];
+            $rules['ubicacion'] = ['required', 'string', 'max:255'];
+        }
+
+        return $rules;
     }
 }

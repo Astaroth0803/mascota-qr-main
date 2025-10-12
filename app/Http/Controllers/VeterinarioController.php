@@ -29,14 +29,24 @@ class VeterinarioController extends Controller
         $stats = [
             'total_mascotas' => $mascotasAsignadas->count(),
             'mascotas_principales' => $veterinario->mascotasPrincipales()->count(),
-            'citas_hoy' => 0, // TODO: Implementar sistema de citas
+            'citas_hoy' => $this->getCitasHoy($veterinario->id),
             'vacunas_pendientes' => $this->getVacunasPendientes($veterinario->id),
         ];
 
         // Notificaciones
         $notificaciones = $this->getNotificacionesVeterinario($veterinario->id);
+        
+        // Notificaciones de solicitudes
+        $notificacionesSolicitudes = $veterinario->notificacionesNoLeidasVeterinario()
+            ->with(['cliente', 'mascota'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        return view('dashboard.veterinario.index', compact('mascotasAsignadas', 'stats', 'notificaciones'));
+        // Obtener citas del mes actual para el calendario
+        $monthlyAppointments = $this->getMonthlyAppointments($veterinario->id);
+
+        return view('dashboard.veterinario.index', compact('mascotasAsignadas', 'stats', 'notificaciones', 'notificacionesSolicitudes', 'monthlyAppointments'));
     }
 
     /**
@@ -198,6 +208,70 @@ class VeterinarioController extends Controller
         $vacuna->delete();
 
         return redirect()->back()->with('success', 'Vacuna eliminada del historial médico.');
+    }
+
+    /**
+     * Obtener citas de hoy para un veterinario
+     */
+    private function getCitasHoy($veterinarioId)
+    {
+        $today = now()->toDateString();
+        return VaccinationRecord::where('veterinarian_id', $veterinarioId)
+            ->where('date', $today)
+            ->count();
+    }
+
+    /**
+     * Obtener citas del mes actual para el calendario
+     */
+    private function getMonthlyAppointments($veterinarioId)
+    {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+        
+        return VaccinationRecord::where('veterinarian_id', $veterinarioId)
+            ->whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->with(['pet.user'])
+            ->orderBy('date')
+            ->orderBy('time')
+            ->get()
+            ->groupBy(function($appointment) {
+                return $appointment->date->format('Y-m-d');
+            })
+            ->map(function($appointments) {
+                return $appointments->map(function($appointment) {
+                    return [
+                        'id' => $appointment->id,
+                        'pet_name' => $appointment->pet->nombre,
+                        'owner_name' => $appointment->pet->user->name ?? 'N/A',
+                        'time' => $appointment->time ? ($appointment->time instanceof \Carbon\Carbon ? $appointment->time->format('H:i') : \Carbon\Carbon::parse($appointment->time)->format('H:i')) : '09:00',
+                        'type' => $appointment->record_type,
+                        'type_label' => $appointment->getTypeOptions()[$appointment->record_type] ?? ucfirst($appointment->record_type),
+                        'location' => $appointment->location,
+                        'url' => route('dashboard.veterinario.calendario.show', $appointment->id),
+                        'color' => $this->getAppointmentColor($appointment->record_type)
+                    ];
+                });
+            });
+    }
+
+    /**
+     * Obtener color para el tipo de cita
+     */
+    private function getAppointmentColor($recordType)
+    {
+        switch ($recordType) {
+            case 'vacuna': return '#34D399'; // green-400
+            case 'checkeo': return '#60A5FA'; // blue-400
+            case 'peluqueria': return '#FCD34D'; // yellow-400
+            case 'operacion': return '#F87171'; // red-400
+            case 'emergencia': return '#EF4444'; // red-500
+            case 'dental': return '#A78BFA'; // violet-400
+            case 'dermatologia': return '#FB7185'; // pink-400
+            case 'neurologia': return '#8B5CF6'; // violet-500
+            case 'cardiologia': return '#EC4899'; // pink-500
+            default: return '#6B7280'; // gray-500
+        }
     }
 
     /**

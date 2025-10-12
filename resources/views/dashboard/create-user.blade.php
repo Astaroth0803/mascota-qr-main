@@ -88,6 +88,25 @@
                         </div>
                     </div>
 
+                    <!-- Tipo de Veterinario -->
+                    <div class="space-y-2">
+                        <label for="tipo_veterinario" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Tipo de Veterinario <span class="text-gray-500">(Solo para veterinarios)</span>
+                        </label>
+                        <select name="tipo_veterinario" id="tipo_veterinario" 
+                                class="w-full p-2 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('tipo_veterinario') border-red-500 @enderror text-sm sm:text-base">
+                            <option value="">Seleccionar tipo</option>
+                            @foreach(App\Models\User::getTiposVeterinarios() as $key => $value)
+                                <option value="{{ $key }}" {{ old('tipo_veterinario') == $key ? 'selected' : '' }}>
+                                    {{ $value }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('tipo_veterinario')
+                            <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Roles -->
                     <div class="space-y-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">

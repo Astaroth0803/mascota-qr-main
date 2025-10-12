@@ -35,7 +35,18 @@
                      <select name="role" class="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base">
                         <option value="">Todos los roles</option>
                         <option value="super_admin" {{ request('role') == 'super_admin' ? 'selected' : '' }}>Administrador</option>
+                        <option value="veterinario" {{ request('role') == 'veterinario' ? 'selected' : '' }}>Veterinario</option>
                         <option value="cliente_qr" {{ request('role') == 'cliente_qr' ? 'selected' : '' }}>Clientes</option>
+                    </select>
+                </div>
+                <div class="w-full sm:w-auto">
+                     <select name="tipo_veterinario" class="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base">
+                        <option value="">Todos los tipos</option>
+                        @foreach(App\Models\User::getTiposVeterinarios() as $key => $value)
+                            <option value="{{ $key }}" {{ request('tipo_veterinario') == $key ? 'selected' : '' }}>
+                                {{ $value }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
                 <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 sm:px-4 rounded-md shadow-sm flex items-center justify-center text-sm sm:text-base">
@@ -64,13 +75,18 @@
                                     </div>
                                 </div>
                                 {{-- Rol del usuario --}}
-                                <div class="flex-shrink-0 ml-2">
+                                <div class="flex-shrink-0 ml-2 flex flex-col gap-1">
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full 
                                         @if($usuario->getRoleNames()->first() == 'administrador' || $usuario->getRoleNames()->first() == 'super_admin') bg-purple-100 text-purple-800
                                         @elseif($usuario->getRoleNames()->first() == 'cliente_qr') bg-green-100 text-green-800
                                         @else bg-gray-100 text-gray-800 @endif">
                                         {{ ucfirst($usuario->getRoleNames()->first() ?? 'Sin rol') }}
                                     </span>
+                                    @if($usuario->tipo_veterinario)
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            {{ $usuario->tipo_veterinario_nombre }}
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
 

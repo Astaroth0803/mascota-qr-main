@@ -4,171 +4,110 @@
 
 @section('content')
 <div class="min-h-screen bg-gray-50" x-data="dashboardClient()">
-    <!-- Header Optimizado para Móviles -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="lg:ml-64">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header Móvil Optimizado -->
+    <div class="bg-white shadow-sm border-b border-gray-200 pt-16 lg:pt-0">
+        <div class="px-4 sm:px-6 lg:px-8">
             <div class="py-4 lg:py-6">
-                <!-- Header Responsive -->
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                    <!-- Título -->
-                    <div class="flex-1 min-w-0 hidden lg:block">
-                        <h1 class="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">Mi Dashboard</h1>
-                        <p class="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">Gestiona tus mascotas y mantén su información actualizada</p>
-                    </div>
-                    
-                    <!-- Botones -->
-                    <div class="flex items-center gap-2 sm:gap-3">
-                        <!-- Panel de Notificaciones -->
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" 
-                                    class="relative inline-flex items-center justify-center px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
-                                <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4 12h16M4 16h16M4 20h16"></path>
-                                </svg>
-                                <span class="hidden sm:inline">Notificaciones</span>
-                                <span class="sm:hidden">Notif.</span>
-                                @if($notifications->count() > 0)
-                                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center text-xs">
-                                        {{ $notifications->count() }}
-                                    </span>
-                                @endif
-                            </button>
-                            
-                            <!-- Dropdown de Notificaciones -->
-                            <div x-show="open" 
-                                 @click.away="open = false"
-                                 x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="opacity-0 transform scale-95"
-                                 x-transition:enter-end="opacity-100 transform scale-100"
-                                 x-transition:leave="transition ease-in duration-150"
-                                 x-transition:leave-start="opacity-100 transform scale-100"
-                                 x-transition:leave-end="opacity-0 transform scale-95"
-                                 class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                                <div class="px-4 py-3 border-b border-gray-200">
-                                    <h3 class="text-sm font-medium text-gray-900">Mis Notificaciones</h3>
-                                    <p class="text-xs text-gray-500 mt-1">{{ $notifications->count() }} notificaciones</p>
-                                </div>
-                                <div class="max-h-96 overflow-y-auto">
-                                    @if($notifications->count() > 0)
-                                        @foreach($notifications as $notification)
-                                            <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                                <div class="flex items-start">
-                                                    <div class="flex-shrink-0">
-                                                        <div class="w-8 h-8 rounded-full flex items-center justify-center
-                                                            @if($notification['type'] == 'error') bg-red-100 text-red-600
-                                                            @elseif($notification['type'] == 'warning') bg-yellow-100 text-yellow-600
-                                                            @elseif($notification['type'] == 'success') bg-green-100 text-green-600
-                                                            @else bg-blue-100 text-blue-600 @endif">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                @if($notification['type'] == 'error')
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                                @elseif($notification['type'] == 'warning')
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                                                @elseif($notification['type'] == 'success')
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                                @else
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                                @endif
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                    <div class="ml-3 flex-1 min-w-0">
-                                                        <p class="text-sm font-medium text-gray-900 truncate">{{ $notification['title'] }}</p>
-                                                        <p class="text-xs text-gray-500 mt-1">{{ $notification['message'] }}</p>
-                                                        @if(isset($notification['action']) && isset($notification['url']))
-                                                            <a href="{{ $notification['url'] }}" 
-                                                               class="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 mt-2">
-                                                                {{ $notification['action'] }}
-                                                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                                                </svg>
-                                                            </a>
-                                                        @endif
-                                                        @if(isset($notification['date']))
-                                                            <p class="text-xs text-gray-400 mt-1">{{ $notification['date']->format('d/m/Y H:i') }}</p>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    @else
-                                        <div class="px-4 py-8 text-center">
-                                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            <h3 class="mt-2 text-sm font-medium text-gray-900">No hay notificaciones</h3>
-                                            <p class="mt-1 text-sm text-gray-500">Todo está al día</p>
-                                        </div>
-                                    @endif
-                                </div>
-                                @if($notifications->count() > 0)
-                                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                                        <a href="{{ route('dashboard.cliente.notificaciones') }}" 
-                                           class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                            Ver todas las notificaciones
-                                        </a>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
+                <!-- Header Principal -->
+                <div class="mb-4">
+                    <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Dashboard</h1>
+                    <p class="text-sm text-gray-600 mt-1">Bienvenido, {{ auth()->user()->name }}</p>
                 </div>
-            </div>
+                
+                <!-- Acciones Rápidas -->
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="{{ route('dashboard.cliente.pet-requests.create') }}" 
+                       class="flex items-center justify-center p-3 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors">
+                        <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-green-700">Nueva Mascota</span>
+                    </a>
+                    <a href="{{ route('dashboard.cliente.qr.index') }}" 
+                       class="flex items-center justify-center p-3 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors">
+                        <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-purple-700">Mis QR</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="lg:ml-64">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
 
-        <!-- Estadísticas Principales Optimizadas para Móviles -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <x-dashboard.stat-card 
-                title="Total de Mascotas"
-                :value="$stats['total_pets']"
-                icon="pets"
-                color="blue"
-                description="Mascotas registradas"
-                :trend="$stats['pets_trend'] ?? null"
-            />
-            
-            <x-dashboard.stat-card 
-                title="Con Código QR"
-                :value="$stats['pets_with_qr']"
-                icon="qr-code"
-                color="green"
-                :change="$stats['qr_coverage']"
-                change-type="positive"
-                description="Cobertura: {{ $stats['qr_coverage'] }}%"
-            />
-            
-                <x-dashboard.stat-card
-                title="Próximas Vacunas"
-                :value="count($stats['upcoming_vaccines'])"
-                icon="alert"
-                color="yellow"
-                description="En los próximos 30 días"
-                :trend="$stats['vaccines_trend'] ?? null"
-            />
-            
-            <x-dashboard.stat-card 
-                title="Vacunas Vencidas"
-                :value="$stats['overdue_vaccines']"
-                icon="alert"
-                color="red"
-                description="Requieren atención"
-                :trend="$stats['overdue_trend'] ?? null"
-            />
-        </div>
+            <!-- Estadísticas Compactas -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <!-- Total Mascotas -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Mascotas</p>
+                            <p class="text-xl font-bold text-gray-900 mt-1">{{ $stats['total_pets'] }}</p>
+                        </div>
+                        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Widgets Optimizados para Móviles -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 lg:mb-8">
-            <!-- Calendario de Citas -->
-            <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <!-- Con Código QR -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Con QR</p>
+                            <p class="text-xl font-bold text-gray-900 mt-1">{{ $stats['pets_with_qr'] }}</p>
+                        </div>
+                        <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Próximas Citas -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Próximas Citas</p>
+                            <p class="text-xl font-bold text-gray-900 mt-1">{{ $stats['upcoming_appointments'] ?? 0 }}</p>
+                        </div>
+                        <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sin QR -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Sin QR</p>
+                            <p class="text-xl font-bold text-gray-900 mt-1">{{ $stats['pets_without_qr'] ?? 0 }}</p>
+                        </div>
+                        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Widgets Compactos -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <!-- Calendario de Citas -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Próximas Citas</h3>
-                    <a href="#" class="text-sm text-blue-600 hover:text-blue-500 font-medium">
+                    <a href="{{ route('dashboard.cliente.calendario.index') }}" class="text-sm text-blue-600 hover:text-blue-500 font-medium">
                         Ver calendario completo →
                     </a>
                 </div>
@@ -205,8 +144,8 @@
             </div>
 
             <!-- Recordatorios Rápidos -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Recordatorios</h3>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recordatorios</h3>
                 <div class="space-y-3">
                     @if(count($stats['upcoming_vaccines']) > 0)
                         <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
@@ -239,8 +178,8 @@
             </div>
         </div>
 
-        <!-- Lista de Mascotas Optimizada para Móviles -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <!-- Lista de Mascotas Compacta -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
@@ -248,14 +187,23 @@
                         <p class="text-sm text-gray-500" x-text="`${filteredPets.length} de ${pets.length} mascotas`"></p>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-3">
-                        <!-- Botón Nueva Mascota -->
-                        <a href="{{ route('dashboard.cliente.pet-requests.create') }}" 
-                           class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Nueva Mascota
-                        </a>
+                            <!-- Botón Nueva Mascota -->
+                            <a href="{{ route('dashboard.cliente.pet-requests.create') }}" 
+                               class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Nueva Mascota
+                            </a>
+                            
+                            <!-- Botón Códigos QR -->
+                            <a href="{{ route('dashboard.cliente.qr.index') }}" 
+                               class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                                </svg>
+                                Mis QR
+                            </a>
                         
                         <!-- Vista Toggle Optimizado para Móvil -->
                         <div class="flex rounded-lg border border-gray-300">
@@ -317,12 +265,19 @@
                             </span>
                             <div class="flex space-x-1">
                                 <a :href="`/dashboard/cliente/mascotas/${pet.slug}`" 
-                                   class="text-blue-600 hover:text-blue-500 text-sm font-medium px-2 py-1 rounded hover:bg-blue-50">
-                                    Ver
+                                   class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span class="hidden sm:inline">Ver</span>
                                 </a>
                                 <a :href="`/dashboard/cliente/mascotas/${pet.slug}/edit`" 
-                                   class="text-gray-600 hover:text-gray-500 text-sm font-medium px-2 py-1 rounded hover:bg-gray-50">
-                                    Editar
+                                   class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span class="hidden sm:inline">Editar</span>
                                 </a>
                             </div>
                         </div>
@@ -374,23 +329,23 @@
                 </div>
             </div>
 
-            <!-- Estado Vacío -->
-            <div x-show="filteredPets.length === 0" class="px-6 py-12 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No hay mascotas</h3>
-                <p class="mt-1 text-sm text-gray-500">Comienza registrando tu primera mascota.</p>
-                <div class="mt-6">
-                    <a href="{{ route('dashboard.cliente.pet-requests.create') }}" 
-                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        Registrar Primera Mascota
-                    </a>
+                <!-- Estado Vacío -->
+                <div x-show="filteredPets.length === 0" class="px-6 py-12 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No hay mascotas</h3>
+                    <p class="mt-1 text-sm text-gray-500">Comienza registrando tu primera mascota.</p>
+                    <div class="mt-6">
+                        <a href="{{ route('dashboard.cliente.pet-requests.create') }}" 
+                           class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Registrar Primera Mascota
+                        </a>
+                    </div>
                 </div>
-            </div>
         </div>
     </div>
     </div>

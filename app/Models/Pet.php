@@ -21,6 +21,7 @@ class Pet extends Model
         'otra_raza',
         'edad_anios',
         'edad_meses',
+        'peso',
         'sexo',
         'nombre_owner',
         'apellido_owner',
@@ -43,6 +44,7 @@ class Pet extends Model
     protected $casts = [
         'edad_anios' => 'integer',
         'edad_meses' => 'integer',
+        'peso' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -126,6 +128,14 @@ class Pet extends Model
     public function vaccinationRecords()
     {
         return $this->hasMany(VaccinationRecord::class)->orderBy('created_at', 'desc');
+    }
+    
+    /**
+     * Relación con las citas médicas
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class)->orderBy('scheduled_datetime', 'desc');
     }
 
     /**

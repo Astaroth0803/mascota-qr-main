@@ -16,9 +16,24 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
+        $user = $request->user();
+        
+        // Determinar qué vista usar según el rol
+        if ($user->hasRole('veterinario')) {
+            return view('profile.veterinario.edit', [
+                'user' => $user,
+                'tiposVeterinarios' => \App\Models\User::getTiposVeterinarios(),
+            ]);
+        } elseif ($user->hasRole('cliente_qr')) {
+            return view('profile.cliente.edit', [
+                'user' => $user,
+            ]);
+        } else {
+            // Administradores y otros roles
+            return view('profile.admin.edit', [
+                'user' => $user,
+            ]);
+        }
     }
 
     /**
@@ -26,13 +41,22 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        
+        // Actualizar campos básicos
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Actualizar campos específicos según el rol
+        if ($user->hasRole('veterinario')) {
+            $user->tipo_veterinario = $request->input('tipo_veterinario');
+            $user->ubicacion = $request->input('ubicacion');
         }
 
-        $request->user()->save();
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

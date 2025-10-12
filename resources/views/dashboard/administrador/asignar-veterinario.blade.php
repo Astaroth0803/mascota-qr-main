@@ -109,7 +109,7 @@
                                                 <div class="mt-1 text-xs text-gray-600">
                                                     @foreach($mascota->veterinariosActivos as $veterinario)
                                                         <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1 mb-1">
-                                                            {{ $veterinario->name }} ({{ $veterinario->pivot->tipo_asignacion }})
+                                                            {{ $veterinario->name }} ({{ ucfirst($veterinario->pivot->tipo_asignacion) }})
                                                         </span>
                                                     @endforeach
                                                 </div>
@@ -125,7 +125,6 @@
                                             </div>
                                         @endif
                                     </div>
-
                                     <!-- Botones de Acción -->
                                     <div class="flex gap-2 ml-4">
                                         @if($mascota->veterinariosActivos()->count() > 0)
@@ -196,9 +195,9 @@
                         <label for="tipo_asignacion" class="block text-sm font-medium text-gray-700">Tipo de Asignación</label>
                         <select name="tipo_asignacion" id="tipo_asignacion" required
                                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <option value="principal">Principal</option>
-                            <option value="especialista">Especialista</option>
-                            <option value="emergencia">Emergencia</option>
+                            <option value="licenciado">Lic. Veterinario</option>
+                            <option value="tecnico">Tec. Veterinario</option>
+                            <option value="auxiliar">Auxiliar de Vet</option>
                         </select>
                     </div>
                     

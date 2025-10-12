@@ -45,6 +45,7 @@ class UserController extends Controller
     {
         $search = $request->input('search');
         $role = $request->input('role');
+        $tipoVeterinario = $request->input('tipo_veterinario');
 
         $query = User::query()
             ->with(['roles', 'permissions']); // Eager loading de roles y permisos
@@ -54,6 +55,10 @@ class UserController extends Controller
                 $query->where('name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
             });
+        }
+
+        if ($tipoVeterinario) {
+            $query->where('tipo_veterinario', $tipoVeterinario);
         }
 
         if ($role) {
@@ -117,6 +122,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'tipo_veterinario' => 'nullable|in:auxiliar,tecnico,licenciado',
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,name',
         ], [
@@ -127,6 +133,7 @@ class UserController extends Controller
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
+            'tipo_veterinario.in' => 'El tipo de veterinario seleccionado no es válido.',
             'roles.array' => 'Los roles deben ser una lista válida.',
             'roles.*.exists' => 'Uno de los roles seleccionados no es válido.',
         ]);
@@ -136,6 +143,7 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'tipo_veterinario' => $request->tipo_veterinario,
         ]);
 
         // Asignar roles si se proporcionaron

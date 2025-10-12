@@ -40,6 +40,7 @@ class VaccinationRecord extends Model
 
     protected $fillable = [
         'pet_id',
+        'veterinarian_id', // ID del veterinario asignado
         'record_type',   // Tipo de registro (vacuna, checkeo, peluquería, operación)
         'vaccine_name',  // Para vacunas
         'date',          // Fecha del procedimiento
@@ -60,13 +61,15 @@ class VaccinationRecord extends Model
     protected $casts = [
         'date' => 'date',
         'vaccination_date' => 'date',
-        'next_date' => 'date'
+        'next_date' => 'date',
+        'time' => 'datetime:H:i:s'
     ];
 
     protected $dates = [
         'date',
         'vaccination_date',
         'next_date',
+        'time',
         'created_at',
         'updated_at'
     ];
@@ -77,6 +80,30 @@ class VaccinationRecord extends Model
     public function pet()
     {
         return $this->belongsTo(Pet::class);
+    }
+
+    /**
+     * Get the veterinarian assigned to this record.
+     */
+    public function veterinarian()
+    {
+        return $this->belongsTo(User::class, 'veterinarian_id');
+    }
+
+    /**
+     * Relación con solicitudes de cambio
+     */
+    public function changeRequests()
+    {
+        return $this->hasMany(AppointmentChangeRequest::class, 'appointment_id');
+    }
+
+    /**
+     * Obtener solicitudes pendientes de cambio
+     */
+    public function pendingChangeRequests()
+    {
+        return $this->changeRequests()->pending();
     }
 
     /**

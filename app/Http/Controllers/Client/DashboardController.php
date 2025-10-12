@@ -25,23 +25,33 @@ class DashboardController extends Controller
             abort(403, 'No tienes permiso para ver esta página');
         }
 
-        $pets = $this->dashboardService->getUserPets(
-            Auth::id(),
-            Auth::user()->email
-        );
+        // Obtener mascotas del usuario directamente
+        $pets = \App\Models\Pet::where('user_id', Auth::id())->get();
 
-        $statistics = $this->dashboardService->getUserStatistics(Auth::id());
+        $stats = $this->dashboardService->getClientStats(Auth::id());
 
-        // Asegurarnos de que statistics siempre tenga un formato válido
-        if (!is_array($statistics)) {
-            $statistics = [
+        // Asegurarnos de que stats siempre tenga un formato válido
+        if (!is_array($stats)) {
+            $stats = [
                 'total_pets' => $pets->count(),
-                'pending_vaccinations' => 0,
-                'upcoming_appointments' => [],
-                'recent_activities' => []
+                'pets_with_qr' => 0,
+                'pets_without_qr' => $pets->count(),
+                'upcoming_appointments' => 0,
+                'upcoming_vaccines' => collect(),
+                'overdue_vaccines' => 0,
+                'recent_activity' => collect(),
+                'species_distribution' => collect(),
+                'age_distribution' => collect(),
+                'pets_trend' => null,
+                'qr_trend' => null,
+                'appointments_trend' => null,
+                'qr_pending_trend' => null,
+                'vaccines_trend' => null,
+                'overdue_trend' => null,
+                'last_updated' => now()
             ];
         }
 
-        return view('dashboard.cliente', compact('pets', 'statistics'));
+        return view('dashboard.cliente.index', compact('pets', 'stats'));
     }
 }

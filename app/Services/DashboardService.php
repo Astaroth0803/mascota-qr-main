@@ -28,23 +28,16 @@ class DashboardService
             $petsWithQR = $pets->whereNotNull('qr_code')->count();
             $petsWithoutQR = $totalPets - $petsWithQR;
             
-            // Próximas vacunas
-            $upcomingVaccines = VaccinationRecord::whereHas('pet', function($query) use ($userId) {
+            // Próximas citas (citas programadas en los próximos 30 días)
+            $upcomingAppointments = VaccinationRecord::whereHas('pet', function($query) use ($userId) {
                 $query->where('user_id', $userId);
             })
-            ->where('next_date', '>=', now())
-            ->where('next_date', '<=', now()->addDays(30))
-            ->orderBy('next_date')
-            ->limit(5)
-            ->get();
-            
-            // Vacunas vencidas
-            $overdueVaccines = VaccinationRecord::whereHas('pet', function($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })
-            ->where('next_date', '<', now())
-            ->where('next_date', '!=', null)
+            ->where('date', '>=', now())
+            ->where('date', '<=', now()->addDays(30))
             ->count();
+            
+            // Mascotas sin QR
+            $petsWithoutQR = $pets->whereNull('qr_code')->count();
             
             // Actividad reciente
             $recentActivity = VaccinationRecord::whereHas('pet', function($query) use ($userId) {
@@ -80,23 +73,30 @@ class DashboardService
                 round((($totalPets - $petsLastMonth) / $petsLastMonth) * 100, 1) : 0;
             
             $qrTrend = $petsWithQR > 0 ? '+12.5% este mes' : null;
-            $vaccinesTrend = $upcomingVaccines->count() > 0 ? 
-                $upcomingVaccines->count() . ' próximas' : null;
-            $overdueTrend = $overdueVaccines > 0 ? 
-                $overdueVaccines . ' vencidas' : null;
+            $appointmentsTrend = $upcomingAppointments > 0 ? 
+                $upcomingAppointments . ' próximas' : null;
+            $qrPendingTrend = $petsWithoutQR > 0 ? 
+                $petsWithoutQR . ' pendientes' : null;
+            
+            // Mantener variables para compatibilidad (pueden ser usadas en otras partes)
+            $vaccinesTrend = null;
+            $overdueTrend = null;
             
             return [
                 'total_pets' => $totalPets,
                 'pets_with_qr' => $petsWithQR,
                 'pets_without_qr' => $petsWithoutQR,
                 'qr_coverage' => $totalPets > 0 ? round(($petsWithQR / $totalPets) * 100, 1) : 0,
-                'upcoming_vaccines' => $upcomingVaccines,
-                'overdue_vaccines' => $overdueVaccines,
+                'upcoming_appointments' => $upcomingAppointments ?? 0,
+                'upcoming_vaccines' => $upcomingVaccines ?? collect(), // Mantener para compatibilidad
+                'overdue_vaccines' => $overdueVaccines ?? 0, // Mantener para compatibilidad
                 'recent_activity' => $recentActivity,
                 'species_distribution' => $speciesDistribution,
                 'age_distribution' => $ageDistribution,
                 'pets_trend' => $petsTrend > 0 ? "+{$petsTrend}% este mes" : null,
                 'qr_trend' => $qrTrend,
+                'appointments_trend' => $appointmentsTrend,
+                'qr_pending_trend' => $qrPendingTrend,
                 'vaccines_trend' => $vaccinesTrend,
                 'overdue_trend' => $overdueTrend,
                 'last_updated' => now()
@@ -273,13 +273,15 @@ class DashboardService
         ->get();
         
         foreach ($upcomingVaccines as $vaccine) {
-            $notificationKey = md5('vaccine_upcoming_' . $vaccine->id . '_' . $vaccine->next_date->format('Y-m-d'));
+            /** @var \Carbon\Carbon $nextDate */
+            $nextDate = $vaccine->next_date;
+            $notificationKey = md5('vaccine_upcoming_' . $vaccine->id . '_' . $nextDate->format('Y-m-d'));
             
             if ($includeRead || !\App\Models\NotificationRead::isRead($userId, 'info', $notificationKey)) {
                 $notifications[] = [
                     'type' => 'info',
                     'title' => 'Próxima vacuna',
-                    'message' => "{$vaccine->pet->nombre} tiene vacuna programada para " . $vaccine->next_date->format('d/m/Y'),
+                    'message' => "{$vaccine->pet->nombre} tiene vacuna programada para " . $nextDate->format('d/m/Y'),
                     'date' => $vaccine->next_date,
                     'key' => $notificationKey
                 ];
@@ -296,13 +298,15 @@ class DashboardService
         ->get();
         
         foreach ($overdueVaccines as $vaccine) {
-            $notificationKey = md5('vaccine_overdue_' . $vaccine->id . '_' . $vaccine->next_date->format('Y-m-d'));
+            /** @var \Carbon\Carbon $nextDate */
+            $nextDate = $vaccine->next_date;
+            $notificationKey = md5('vaccine_overdue_' . $vaccine->id . '_' . $nextDate->format('Y-m-d'));
             
             if ($includeRead || !\App\Models\NotificationRead::isRead($userId, 'warning', $notificationKey)) {
                 $notifications[] = [
                     'type' => 'warning',
                     'title' => 'Vacuna vencida',
-                    'message' => "{$vaccine->pet->nombre} tiene vacuna vencida desde " . $vaccine->next_date->format('d/m/Y'),
+                    'message' => "{$vaccine->pet->nombre} tiene vacuna vencida desde " . $nextDate->format('d/m/Y'),
                     'date' => $vaccine->next_date,
                     'key' => $notificationKey
                 ];
@@ -393,24 +397,60 @@ class DashboardService
      */
     public function getUpcomingAppointments($userId)
     {
-        // Simular citas próximas (en una implementación real, esto vendría de una tabla de citas)
-        $pets = Pet::where('user_id', $userId)->get();
+        // Obtener citas reales desde VaccinationRecord
+        $upcomingAppointments = VaccinationRecord::whereHas('pet', function($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })
+        ->where('date', '>=', now())
+        ->where('date', '<=', now()->addDays(30))
+        ->with(['pet', 'veterinarian'])
+        ->orderBy('date')
+        ->orderBy('time')
+        ->limit(5)
+        ->get();
         
         $appointments = [];
-        foreach ($pets as $pet) {
-            // Simular algunas citas
-            if (rand(0, 1)) {
-                $appointments[] = [
-                    'pet_name' => $pet->nombre,
-                    'date' => now()->addDays(rand(1, 14))->format('d/m/Y'),
-                    'time' => rand(9, 17) . ':00',
-                    'type' => 'Consulta general',
-                    'id' => rand(1000, 9999)
-                ];
-            }
+        foreach ($upcomingAppointments as $appointment) {
+            /** @var \Carbon\Carbon $date */
+            $date = $appointment->date;
+            /** @var \Carbon\Carbon|null $time */
+            $time = $appointment->time;
+            /** @var \Carbon\Carbon|null $nextDate */
+            $nextDate = $appointment->next_date;
+            
+            $appointments[] = [
+                'id' => $appointment->id,
+                'pet_id' => $appointment->pet->id,
+                'pet_name' => $appointment->pet->nombre,
+                'date' => $date->format('d/m/Y'),
+                'time' => $time ? $time->format('H:i') : '09:00',
+                'type' => $this->getAppointmentTypeLabel($appointment->record_type),
+                'record_type' => $appointment->record_type,
+                'vet_name' => $appointment->vet_name,
+                'veterinarian' => $appointment->veterinarian ? [
+                    'id' => $appointment->veterinarian->id,
+                    'name' => $appointment->veterinarian->name,
+                    'email' => $appointment->veterinarian->email
+                ] : null,
+                'location' => $appointment->location,
+                'observations' => $appointment->observations,
+                'diagnosis' => $appointment->diagnosis,
+                'treatment' => $appointment->treatment,
+                'vaccine_name' => $appointment->vaccine_name,
+                'next_date' => $nextDate ? $nextDate->format('d/m/Y') : null
+            ];
         }
         
-        return collect($appointments)->sortBy('date')->take(5);
+        return collect($appointments);
+    }
+
+    /**
+     * Obtiene el label legible del tipo de cita
+     */
+    private function getAppointmentTypeLabel($recordType)
+    {
+        $types = VaccinationRecord::getTypeOptions();
+        return $types[$recordType] ?? ucfirst($recordType);
     }
 
     /**

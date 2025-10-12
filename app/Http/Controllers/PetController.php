@@ -140,6 +140,9 @@ class PetController extends Controller
             })
             ->get();
 
+        // Limpiar caché de estadísticas para asegurar datos actualizados
+        $this->dashboardService->clearStatsCache($userId);
+        
         // Obtener estadísticas mejoradas
         $stats = $this->dashboardService->getClientStats($userId);
         
@@ -531,6 +534,7 @@ class PetController extends Controller
             'vet_name' => 'nullable|string|max:255',
             'location' => 'nullable|string|max:255',
             'observations' => 'nullable|string',
+            'pet_weight' => 'nullable|numeric|min:0|max:999.99',
             'document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240'
         ];
 
@@ -675,6 +679,16 @@ class PetController extends Controller
 
             // Limpiar cualquier caché relacionada con esta mascota
             Cache::flush(); // Limpiar toda la caché para estar seguros
+
+            // Actualizar el peso de la mascota si se proporciona (solo veterinarios)
+            if (isset($validated['pet_weight']) && $validated['pet_weight'] !== null && Auth::user()->hasRole('veterinario')) {
+                $pet->update(['peso' => $validated['pet_weight']]);
+                Log::info('Peso de mascota actualizado por veterinario', [
+                    'pet_id' => $pet->id,
+                    'new_weight' => $validated['pet_weight'],
+                    'vet_id' => Auth::id()
+                ]);
+            }
 
             // Actualizar el timestamp de la mascota para invalidar cachés basadas en él
             $pet->touch();

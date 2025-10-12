@@ -13,6 +13,11 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;
 
+    // Constantes para tipos de veterinarios
+    const TIPO_AUXILIAR = 'auxiliar';
+    const TIPO_TECNICO = 'tecnico';
+    const TIPO_LICENCIADO = 'licenciado';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -23,6 +28,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'tipo_veterinario',
+        'slug',
+        'ubicacion',
     ];
 
     /**
@@ -46,6 +54,39 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Relación con mascotas propias (como cliente)
+     */
+    public function pets()
+    {
+        return $this->hasMany(Pet::class, 'user_id');
+    }
+
+    /**
+     * Genera un slug único basado en el nombre del usuario
+     */
+    public function generateSlug()
+    {
+        $slug = \Str::slug($this->name);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (static::where('slug', $slug)->where('id', '!=', $this->id ?? 0)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Obtiene la ruta del usuario usando el slug
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
     }
 
     /**
@@ -83,6 +124,22 @@ class User extends Authenticatable
     {
         return $this->hasMany(MascotaVeterinario::class, 'veterinario_id');
     }
+    
+    /**
+     * Citas como veterinario
+     */
+    public function veterinarianAppointments()
+    {
+        return $this->hasMany(Appointment::class, 'veterinarian_id')->orderBy('scheduled_datetime', 'desc');
+    }
+    
+    /**
+     * Citas como cliente
+     */
+    public function clientAppointments()
+    {
+        return $this->hasMany(Appointment::class, 'client_id')->orderBy('scheduled_datetime', 'desc');
+    }
 
     /**
      * Verificar si es veterinario
@@ -106,5 +163,103 @@ class User extends Authenticatable
     public function isCliente()
     {
         return $this->hasRole('cliente_qr');
+    }
+
+    /**
+     * Obtener las opciones de tipos de veterinarios
+     */
+    public static function getTiposVeterinarios()
+    {
+        return [
+            self::TIPO_AUXILIAR => 'Auxiliar de Vet',
+            self::TIPO_TECNICO => 'Tec. Veterinario',
+            self::TIPO_LICENCIADO => 'Lic. Veterinario',
+        ];
+    }
+
+    /**
+     * Obtener el nombre del tipo de veterinario
+     */
+    public function getTipoVeterinarioNombreAttribute()
+    {
+        $tipos = self::getTiposVeterinarios();
+        return $tipos[$this->tipo_veterinario] ?? 'No especificado';
+    }
+
+    /**
+     * Verificar si es veterinario con tipo específico
+     */
+    public function isVeterinarioTipo($tipo)
+    {
+        return $this->isVeterinario() && $this->tipo_veterinario === $tipo;
+    }
+
+    /**
+     * Notificaciones recibidas como veterinario
+     */
+    public function notificacionesVeterinario()
+    {
+        return $this->hasMany(VetRequestNotification::class, 'veterinario_id');
+    }
+
+    /**
+     * Notificaciones enviadas como cliente
+     */
+    public function notificacionesCliente()
+    {
+        return $this->hasMany(VetRequestNotification::class, 'cliente_id');
+    }
+
+    /**
+     * Obtener notificaciones no leídas como veterinario
+     */
+    public function notificacionesNoLeidasVeterinario()
+    {
+        return $this->notificacionesVeterinario()->noLeidas();
+    }
+
+    /**
+     * Obtener notificaciones no leídas como cliente
+     */
+    public function notificacionesNoLeidasCliente()
+    {
+        return $this->notificacionesCliente()->noLeidas();
+    }
+
+    /**
+     * Solicitudes de cambio de citas como cliente
+     */
+    public function appointmentChangeRequestsAsClient()
+    {
+        return $this->hasMany(AppointmentChangeRequest::class, 'client_id');
+    }
+
+    /**
+     * Solicitudes de cambio de citas como veterinario
+     */
+    public function appointmentChangeRequestsAsVeterinarian()
+    {
+        return $this->hasMany(AppointmentChangeRequest::class, 'veterinarian_id');
+    }
+
+    /**
+     * Boot del modelo para manejar generación automática de slug
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Generar slug automáticamente
+        static::creating(function ($user) {
+            if (empty($user->slug)) {
+                $user->slug = $user->generateSlug();
+            }
+        });
+
+        static::updating(function ($user) {
+            if ($user->isDirty('name') && empty($user->slug)) {
+                $user->slug = $user->generateSlug();
+            }
+        });
     }
 }

@@ -81,6 +81,38 @@ Route::middleware('auth')->group(function () {
         Route::get('/notificaciones', [PetController::class, 'clientNotifications'])->name('notificaciones');
         Route::post('/mascotas/{pet:slug}/generate-qr', [PetController::class, 'generateQRCode'])->middleware('throttle:10,1')->name('mascotas.generate-qr');
 
+        // Rutas para el calendario de citas
+        Route::prefix('calendario')->name('calendario.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Client\AppointmentController::class, 'index'])->name('index');
+            Route::get('/crear', [App\Http\Controllers\Client\AppointmentController::class, 'create'])->name('create');
+            Route::post('/crear', [App\Http\Controllers\Client\AppointmentController::class, 'store'])->name('store');
+            Route::get('/{appointment}', [App\Http\Controllers\Client\AppointmentController::class, 'show'])->name('show');
+            Route::get('/{appointment}/editar', [App\Http\Controllers\Client\AppointmentController::class, 'edit'])->name('edit');
+            Route::put('/{appointment}', [App\Http\Controllers\Client\AppointmentController::class, 'update'])->name('update');
+            Route::delete('/{appointment}', [App\Http\Controllers\Client\AppointmentController::class, 'destroy'])->name('destroy');
+            Route::get('/api/mes', [App\Http\Controllers\Client\AppointmentController::class, 'getAppointmentsForMonth'])->name('api.month');
+        });
+
+        // Rutas para gestión de códigos QR de clientes
+        Route::prefix('qr')->name('qr.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Client\QRController::class, 'index'])->name('index');
+            Route::post('/generate-single', [App\Http\Controllers\Client\QRController::class, 'generateSingle'])->name('generate-single');
+            Route::post('/generate-multiple', [App\Http\Controllers\Client\QRController::class, 'generateMultiple'])->name('generate-multiple');
+            Route::get('/{pet}', [App\Http\Controllers\Client\QRController::class, 'show'])->name('show');
+            Route::get('/{pet}/download', [App\Http\Controllers\Client\QRController::class, 'download'])->name('download');
+            Route::post('/{pet}/regenerate', [App\Http\Controllers\Client\QRController::class, 'regenerate'])->name('regenerate');
+        });
+
+        // Rutas para veterinarios disponibles
+        Route::prefix('veterinarios')->name('veterinarios.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Client\VeterinarioController::class, 'index'])->name('index');
+            Route::get('/mis-veterinarios', [App\Http\Controllers\Client\VeterinarioController::class, 'misVeterinarios'])->name('mis-veterinarios');
+            Route::get('/{veterinario:slug}', [App\Http\Controllers\Client\VeterinarioController::class, 'show'])->name('show');
+            Route::post('/solicitar', [App\Http\Controllers\Client\VeterinarioController::class, 'solicitar'])->name('solicitar');
+            Route::post('/cambiar', [App\Http\Controllers\Client\VeterinarioController::class, 'cambiarVeterinario'])->name('cambiar');
+            Route::post('/desasignar/{asignacion}', [App\Http\Controllers\Client\VeterinarioController::class, 'desasignar'])->name('desasignar');
+        });
+
         // Rutas para depuración
         Route::get('/mascotas/{pet:slug}/debug-records', [PetController::class, 'debugRecords'])->name('mascotas.debug-records');
         Route::get('/mascotas/{pet:slug}/debug-refresh', [PetController::class, 'debugRefreshCache'])->name('mascotas.debug-refresh');
@@ -143,18 +175,86 @@ Route::middleware('auth')->group(function () {
     });
 
     // Rutas del dashboard para veterinarios (solo para veterinarios con permisos)
-    Route::prefix('dashboard/veterinario')->middleware(['role:veterinario', 'permission:ver-asignaciones'])->group(function () {
+    Route::prefix('dashboard/veterinario')->middleware(['role:veterinario'])->group(function () {
         Route::get('/', [App\Http\Controllers\VeterinarioController::class, 'dashboard'])->name('dashboard.veterinario');
         
         // Gestión de mascotas asignadas
         Route::get('mascotas', [App\Http\Controllers\VeterinarioController::class, 'mascotas'])->name('dashboard.veterinario.mascotas');
-        Route::get('mascotas/{pet}', [App\Http\Controllers\VeterinarioController::class, 'showMascota'])->middleware('permission:ver-historial-medico')->name('dashboard.veterinario.mascota.show');
+        Route::get('mascotas/{pet}', [App\Http\Controllers\VeterinarioController::class, 'showMascota'])->name('dashboard.veterinario.mascota.show');
         
         // Gestión del historial médico
-        Route::get('mascotas/{pet}/historial', [App\Http\Controllers\VeterinarioController::class, 'gestionarHistorial'])->middleware('permission:gestionar-historial-medico')->name('dashboard.veterinario.historial');
-        Route::post('mascotas/{pet}/vacunas', [App\Http\Controllers\VeterinarioController::class, 'agregarVacuna'])->middleware('permission:crear-vacunas')->name('dashboard.veterinario.vacunas.store');
-        Route::put('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'actualizarVacuna'])->middleware('permission:editar-vacunas')->name('dashboard.veterinario.vacunas.update');
-        Route::delete('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'eliminarVacuna'])->middleware('permission:eliminar-vacunas')->name('dashboard.veterinario.vacunas.destroy');
+        Route::get('mascotas/{pet}/historial', [App\Http\Controllers\VeterinarioController::class, 'gestionarHistorial'])->name('dashboard.veterinario.historial');
+        Route::post('mascotas/{pet}/vacunas', [App\Http\Controllers\VeterinarioController::class, 'agregarVacuna'])->name('dashboard.veterinario.vacunas.store');
+        Route::put('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'actualizarVacuna'])->name('dashboard.veterinario.vacunas.update');
+        Route::delete('mascotas/{pet}/vacunas/{vacuna}', [App\Http\Controllers\VeterinarioController::class, 'eliminarVacuna'])->name('dashboard.veterinario.vacunas.destroy');
+    });
+
+    // Rutas para el calendario de citas de veterinarios (separadas para evitar problemas de middleware)
+    Route::prefix('dashboard/veterinario/calendario')->middleware(['role:veterinario'])->name('dashboard.veterinario.calendario.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Veterinario\AppointmentController::class, 'index'])->name('index');
+        Route::get('/hoy', [App\Http\Controllers\Veterinario\AppointmentController::class, 'today'])->name('today');
+        Route::get('/crear', [App\Http\Controllers\Veterinario\AppointmentController::class, 'create'])->name('create');
+        Route::post('/crear', [App\Http\Controllers\Veterinario\AppointmentController::class, 'store'])->name('store');
+        Route::get('/{appointment}', [App\Http\Controllers\Veterinario\AppointmentController::class, 'show'])->name('show');
+        Route::get('/{appointment}/editar', [App\Http\Controllers\Veterinario\AppointmentController::class, 'edit'])->name('edit');
+        Route::put('/{appointment}', [App\Http\Controllers\Veterinario\AppointmentController::class, 'update'])->name('update');
+        Route::delete('/{appointment}', [App\Http\Controllers\Veterinario\AppointmentController::class, 'destroy'])->name('destroy');
+        Route::get('/api/mes', [App\Http\Controllers\Veterinario\AppointmentController::class, 'getAppointmentsForMonth'])->name('api.month');
+    });
+
+    // Rutas para solicitudes de veterinarios
+    Route::prefix('dashboard/veterinario/solicitudes')->middleware(['role:veterinario'])->name('dashboard.veterinario.solicitudes.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Veterinario\VetRequestController::class, 'index'])->name('index');
+        Route::get('/{solicitud}', [App\Http\Controllers\Veterinario\VetRequestController::class, 'show'])->name('show');
+        Route::post('/{solicitud}/aceptar', [App\Http\Controllers\Veterinario\VetRequestController::class, 'aceptar'])->name('aceptar');
+        Route::post('/{solicitud}/rechazar', [App\Http\Controllers\Veterinario\VetRequestController::class, 'rechazar'])->name('rechazar');
+        Route::get('/api/pendientes', [App\Http\Controllers\Veterinario\VetRequestController::class, 'pendientes'])->name('api.pendientes');
+        
+        // Rutas para citas pendientes
+        Route::post('/citas/{cita}/aceptar', [App\Http\Controllers\Veterinario\VetRequestController::class, 'aceptarCita'])->name('citas.aceptar');
+        Route::post('/citas/{cita}/rechazar', [App\Http\Controllers\Veterinario\VetRequestController::class, 'rechazarCita'])->name('citas.rechazar');
+    });
+
+    // Rutas para notificaciones de veterinarios
+    Route::prefix('dashboard/veterinario/notificaciones')->middleware(['role:veterinario'])->name('dashboard.veterinario.notificaciones.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Veterinario\VetNotificationController::class, 'index'])->name('index');
+        Route::post('/{notificacion}/marcar-leida', [App\Http\Controllers\Veterinario\VetNotificationController::class, 'marcarLeida'])->name('marcar-leida');
+        Route::post('/marcar-todas-leidas', [App\Http\Controllers\Veterinario\VetNotificationController::class, 'marcarTodasLeidas'])->name('marcar-todas-leidas');
+        Route::get('/api/no-leidas', [App\Http\Controllers\Veterinario\VetNotificationController::class, 'noLeidas'])->name('api.no-leidas');
+        Route::get('/api/conteo-no-leidas', [App\Http\Controllers\Veterinario\VetNotificationController::class, 'conteoNoLeidas'])->name('api.conteo-no-leidas');
+    });
+
+    // Rutas para solicitudes de cambio de citas
+    Route::prefix('dashboard/veterinario/solicitudes-cambio-citas')->middleware(['role:veterinario'])->name('dashboard.veterinario.appointment-change-requests.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'index'])->name('index');
+        Route::get('/{changeRequest}', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'show'])->name('show');
+        Route::post('/{changeRequest}/aprobar', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'approve'])->name('approve');
+        Route::post('/{changeRequest}/rechazar', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'reject'])->name('reject');
+        Route::get('/api/pendientes', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'pending'])->name('api.pending');
+        Route::get('/api/conteo-pendientes', [App\Http\Controllers\Veterinario\AppointmentChangeRequestController::class, 'pendingCount'])->name('api.pending-count');
+    });
+    
+    // Rutas para el nuevo sistema de citas con estados
+    Route::resource('appointments', App\Http\Controllers\AppointmentController::class)->middleware(['auth']);
+    
+    // Rutas específicas para veterinarios
+    Route::prefix('dashboard/veterinario/appointments')->middleware(['role:veterinario'])->name('vet.appointments.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AppointmentController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\AppointmentController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\AppointmentController::class, 'store'])->name('store');
+        Route::get('/{appointment}', [App\Http\Controllers\AppointmentController::class, 'show'])->name('show');
+        Route::get('/{appointment}/edit', [App\Http\Controllers\AppointmentController::class, 'edit'])->name('edit');
+        Route::patch('/{appointment}', [App\Http\Controllers\AppointmentController::class, 'update'])->name('update');
+        Route::delete('/{appointment}', [App\Http\Controllers\AppointmentController::class, 'destroy'])->name('destroy');
+    });
+    
+    // Rutas específicas para clientes
+    Route::prefix('dashboard/cliente/appointments')->middleware(['role:cliente_qr'])->name('client.appointments.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AppointmentController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\AppointmentController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\AppointmentController::class, 'store'])->name('store');
+        Route::get('/{appointment}', [App\Http\Controllers\AppointmentController::class, 'show'])->name('show');
+        Route::patch('/{appointment}/cancel', [App\Http\Controllers\AppointmentController::class, 'update'])->name('cancel');
     });
 
     // Rutas para asignación de veterinarios (solo para administradores con permisos)
