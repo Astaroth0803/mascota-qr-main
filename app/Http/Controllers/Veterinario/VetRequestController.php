@@ -4,13 +4,24 @@ namespace App\Http\Controllers\Veterinario;
 
 use App\Http\Controllers\Controller;
 use App\Models\MascotaVeterinario;
-use App\Models\VetRequestNotification;
 use App\Models\Appointment;
+use App\Models\AppointmentRequest;
+use App\Http\Requests\VetRequestRejectRequest;
+use App\Http\Requests\AppointmentAcceptRequest;
+use App\Http\Requests\AppointmentRejectRequest;
+use App\Events\VetRequestAccepted;
+use App\Events\VetRequestRejected;
+use App\Events\AppointmentAccepted;
+use App\Events\AppointmentRejected;
+use App\Events\VetRequestReceived;
+use App\Events\AppointmentRequestReceived;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class VetRequestController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Mostrar solicitudes pendientes del veterinario
      */
@@ -18,8 +29,15 @@ class VetRequestController extends Controller
     {
         $veterinario = Auth::user();
         
-        // Obtener solicitudes pendientes (no activas y no procesadas)
-        $solicitudes = MascotaVeterinario::where('veterinario_id', $veterinario->id)
+        // Obtener solicitudes de citas pendientes
+        $solicitudesCitas = AppointmentRequest::where('veterinarian_id', $veterinario->id)
+            ->where('status', 'pendiente')
+            ->with(['pet.user', 'client'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Obtener solicitudes de asignación de mascotas pendientes
+        $solicitudesMascotas = MascotaVeterinario::where('veterinario_id', $veterinario->id)
             ->where('activo', false) // Solicitudes pendientes
             ->where(function($query) {
                 // Solo mostrar solicitudes que NO han sido procesadas
@@ -35,14 +53,7 @@ class VetRequestController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         
-        // Obtener citas pendientes (nuevas solicitudes de citas)
-        $citasPendientes = Appointment::where('veterinarian_id', $veterinario->id)
-            ->where('status', Appointment::STATUS_PENDING)
-            ->with(['pet.user', 'client'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        return view('dashboard.veterinario.solicitudes.index', compact('solicitudes', 'citasPendientes'));
+        return view('veterinarian.solicitudes.index', compact('solicitudesCitas', 'solicitudesMascotas'));
     }
     
     /**
@@ -50,14 +61,11 @@ class VetRequestController extends Controller
      */
     public function show(MascotaVeterinario $solicitud)
     {
-        // Verificar que la solicitud pertenece al veterinario autenticado
-        if ($solicitud->veterinario_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorize('access', $solicitud);
         
         $solicitud->load(['mascota.user', 'veterinario']);
         
-        return view('dashboard.veterinario.solicitudes.show', compact('solicitud'));
+        return view('veterinarian.solicitudes.show', compact('solicitud'));
     }
     
     /**
@@ -65,33 +73,25 @@ class VetRequestController extends Controller
      */
     public function aceptar(Request $request, MascotaVeterinario $solicitud)
     {
-        // Verificar que la solicitud pertenece al veterinario autenticado
-        if ($solicitud->veterinario_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorize('accept', $solicitud);
         
-        // Verificar que la solicitud no ha sido procesada (si ya está activa, significa que ya fue aceptada)
+        // Verificar que la solicitud no ha sido procesada
         if ($solicitud->activo) {
-            return redirect()->back()->with('error', 'Esta solicitud ya ha sido aceptada.');
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Esta solicitud ya ha sido aceptada.'], 422)
+                : redirect()->back()->with('error', 'Esta solicitud ya ha sido aceptada.');
         }
         
-        // Actualizar la solicitud (ACTIVAR al aceptarla)
+        // Actualizar la solicitud
         $solicitud->update([
-            'activo' => true, // ACTIVAR la asignación al aceptarla
-            'notas' => ($solicitud->notas ?? '') . "\n[Aceptada por el veterinario el " . now()->format('d/m/Y H:i') . "]"
+            'activo' => true,
+            'notas' => trim(($solicitud->notas ?? '') . "\n[Aceptada por el veterinario el " . now()->format('d/m/Y H:i') . "]")
         ]);
         
-        // Crear notificación para el cliente
-        VetRequestNotification::create([
-            'veterinario_id' => $solicitud->veterinario_id,
-            'cliente_id' => $solicitud->mascota->user_id,
-            'mascota_id' => $solicitud->mascota_id,
-            'asignacion_id' => $solicitud->id,
-            'tipo' => 'aceptada',
-            'mensaje' => "El veterinario {$solicitud->veterinario->name} ha aceptado atender a {$solicitud->mascota->nombre} como " . ucfirst($solicitud->tipo_asignacion) . "."
-        ]);
+        // Disparar evento
+        event(new VetRequestAccepted($solicitud));
         
-        // Si es una petición AJAX, devolver JSON
+        // Respuesta adaptable
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -105,44 +105,34 @@ class VetRequestController extends Controller
     /**
      * Rechazar una solicitud
      */
-    public function rechazar(Request $request, MascotaVeterinario $solicitud)
+    public function rechazar(VetRequestRejectRequest $request, MascotaVeterinario $solicitud)
     {
-        $request->validate([
-            'motivo' => 'nullable|string|max:500'
-        ]);
+        $this->authorize('reject', $solicitud);
         
-        // Verificar que la solicitud pertenece al veterinario autenticado
-        if ($solicitud->veterinario_id !== Auth::id()) {
-            abort(403);
-        }
-        
-        // Verificar que la solicitud no ha sido procesada (si ya está activa, fue aceptada; si fue rechazada, tendría notas de rechazo)
+        // Verificar que la solicitud no ha sido procesada
         if ($solicitud->activo) {
-            return redirect()->back()->with('error', 'Esta solicitud ya ha sido aceptada y no puede ser rechazada.');
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Esta solicitud ya ha sido aceptada y no puede ser rechazada.'], 422)
+                : redirect()->back()->with('error', 'Esta solicitud ya ha sido aceptada y no puede ser rechazada.');
         }
         
         // Verificar si ya fue rechazada
         if (strpos($solicitud->notas ?? '', '[Rechazada por el veterinario') !== false) {
-            return redirect()->back()->with('error', 'Esta solicitud ya ha sido rechazada.');
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Esta solicitud ya ha sido rechazada.'], 422)
+                : redirect()->back()->with('error', 'Esta solicitud ya ha sido rechazada.');
         }
         
-        // Marcar como rechazada (mantener activo = false y agregar nota de rechazo)
+        // Actualizar la solicitud
         $solicitud->update([
-            'activo' => false, // Mantener como false (rechazada)
-            'notas' => ($solicitud->notas ?? '') . "\n[Rechazada por el veterinario el " . now()->format('d/m/Y H:i') . ($request->motivo ? " - Motivo: {$request->motivo}" : '') . "]"
+            'activo' => false,
+            'notas' => trim(($solicitud->notas ?? '') . "\n[Rechazada por el veterinario el " . now()->format('d/m/Y H:i') . ($request->motivo ? " - Motivo: {$request->motivo}" : '') . "]")
         ]);
         
-        // Crear notificación para el cliente
-        VetRequestNotification::create([
-            'veterinario_id' => $solicitud->veterinario_id,
-            'cliente_id' => $solicitud->mascota->user_id,
-            'mascota_id' => $solicitud->mascota_id,
-            'asignacion_id' => $solicitud->id,
-            'tipo' => 'rechazada',
-            'mensaje' => "El veterinario {$solicitud->veterinario->name} ha rechazado atender a {$solicitud->mascota->nombre} como " . ucfirst($solicitud->tipo_asignacion) . "." . ($request->motivo ? " Motivo: {$request->motivo}" : '')
-        ]);
+        // Disparar evento
+        event(new VetRequestRejected($solicitud, $request->motivo));
         
-        // Si es una petición AJAX, devolver JSON
+        // Respuesta adaptable
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -173,47 +163,35 @@ class VetRequestController extends Controller
     /**
      * Aceptar una cita pendiente
      */
-    public function aceptarCita(Request $request, Appointment $cita)
+    public function aceptarCita(AppointmentAcceptRequest $request, Appointment $cita)
     {
-        // Verificar que la cita pertenece al veterinario autenticado
-        if ($cita->veterinarian_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorize('accept', $cita);
         
         // Verificar que la cita está en estado pendiente
         if (!$cita->canBeScheduled()) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Esta cita no puede ser agendada.'
-                ], 422);
-            }
-            return redirect()->back()->withErrors(['error' => 'Esta cita no puede ser agendada.']);
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Esta cita no puede ser agendada.'], 422)
+                : redirect()->back()->withErrors(['error' => 'Esta cita no puede ser agendada.']);
         }
-        
-        $request->validate([
-            'scheduled_datetime' => 'required|date|after:now',
-            'location' => 'nullable|string|max:255',
-        ]);
         
         // Verificar disponibilidad del veterinario
         if ($this->isVeterinarianBusy(Auth::id(), $request->scheduled_datetime, $cita->id)) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No estás disponible en esa fecha y hora.'
-                ], 422);
-            }
-            return redirect()->back()->withErrors(['scheduled_datetime' => 'No estás disponible en esa fecha y hora.']);
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'No estás disponible en esa fecha y hora.'], 422)
+                : redirect()->back()->withErrors(['scheduled_datetime' => 'No estás disponible en esa fecha y hora.']);
         }
         
+        // Actualizar la cita
         $cita->update([
             'status' => Appointment::STATUS_SCHEDULED,
             'scheduled_datetime' => $request->scheduled_datetime,
             'location' => $request->location ?? Auth::user()->ubicacion,
         ]);
         
-        // Si es una petición AJAX, devolver JSON
+        // Disparar evento
+        event(new AppointmentAccepted($cita, $request->scheduled_datetime, $request->location));
+        
+        // Respuesta adaptable
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -227,35 +205,28 @@ class VetRequestController extends Controller
     /**
      * Rechazar una cita pendiente
      */
-    public function rechazarCita(Request $request, Appointment $cita)
+    public function rechazarCita(AppointmentRejectRequest $request, Appointment $cita)
     {
-        // Verificar que la cita pertenece al veterinario autenticado
-        if ($cita->veterinarian_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorize('reject', $cita);
         
         // Verificar que la cita puede ser cancelada
         if (!$cita->canBeCancelled()) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Esta cita no puede ser cancelada.'
-                ], 422);
-            }
-            return redirect()->back()->withErrors(['error' => 'Esta cita no puede ser cancelada.']);
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Esta cita no puede ser cancelada.'], 422)
+                : redirect()->back()->withErrors(['error' => 'Esta cita no puede ser cancelada.']);
         }
         
-        $request->validate([
-            'cancellation_reason' => 'required|string|max:500',
-        ]);
-        
+        // Actualizar la cita
         $cita->update([
             'status' => Appointment::STATUS_CANCELLED,
             'cancellation_reason' => $request->cancellation_reason,
             'cancelled_at' => now(),
         ]);
         
-        // Si es una petición AJAX, devolver JSON
+        // Disparar evento
+        event(new AppointmentRejected($cita, $request->cancellation_reason));
+        
+        // Respuesta adaptable
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,

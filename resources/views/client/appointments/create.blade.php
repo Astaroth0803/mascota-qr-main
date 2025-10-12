@@ -1,0 +1,109 @@
+@extends('layouts.dashboard')
+
+@section('title', 'Crear Nueva Cita')
+
+@section('content')
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Crear Nueva Cita</h1>
+            <p class="text-gray-600 mt-2">Programa una nueva cita para tu mascota</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form action="{{ route('dashboard.cliente.calendario.store') }}" method="POST" class="space-y-6">
+                @csrf
+                
+                <div>
+                    <label for="pet_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Mascota *
+                    </label>
+                    <select name="pet_id" id="pet_id" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Selecciona una mascota</option>
+                        @foreach($pets as $pet)
+                            <option value="{{ $pet->id }}" {{ old('pet_id') == $pet->id ? 'selected' : '' }}>
+                                {{ $pet->nombre }} ({{ $pet->especie }})
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('pet_id')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="veterinarian_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Veterinario *
+                    </label>
+                    <select name="veterinarian_id" id="veterinarian_id" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Selecciona un veterinario</option>
+                        @foreach($veterinarians as $vet)
+                            <option value="{{ $vet->id }}" {{ old('veterinarian_id') == $vet->id ? 'selected' : '' }}>
+                                {{ $vet->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('veterinarian_id')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="scheduled_datetime" class="block text-sm font-medium text-gray-700 mb-2">
+                        Fecha y Hora *
+                    </label>
+                    <input type="datetime-local" name="scheduled_datetime" id="scheduled_datetime" 
+                           value="{{ old('scheduled_datetime') }}" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    @error('scheduled_datetime')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de Cita *
+                    </label>
+                    <select name="type" id="type" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Selecciona el tipo de cita</option>
+                        @foreach($recordTypes as $key => $value)
+                            <option value="{{ $key }}" {{ old('type') == $key ? 'selected' : '' }}>
+                                {{ $value }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('type')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Notas
+                    </label>
+                    <textarea name="notes" id="notes" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Describe el motivo de la cita...">{{ old('notes') }}</textarea>
+                    @error('notes')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <a href="{{ route('dashboard.cliente.calendario.index') }}" 
+                       class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancelar
+                    </a>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        Crear Cita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection

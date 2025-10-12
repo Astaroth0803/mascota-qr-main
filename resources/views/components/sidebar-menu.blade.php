@@ -1,487 +1,32 @@
 {{-- Incluir el sidebar funcional --}}
     @props(['active' => 'dashboard', 'pendingRequests' => 0])
 
-    {{-- Navbar para móviles --}}
-    <nav x-data="{ open: false }" class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div class="flex items-center justify-between px-4 py-3">
-            <div class="flex items-center space-x-3">
-                
-                <span class="text-lg font-bold text-gray-800">Buky World</span>
-            </div>
-            <div class="flex items-center space-x-2">
-                @if(auth()->user()->hasRole('cliente_qr'))
-                <!-- Botón de notificaciones para clientes -->
-                <div x-data="{ open: false, hasNotifications: true }" class="relative">
-                    <button @click="open = !open" 
-                            class="relative inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition">
-                        <!-- Icono de campana dinámico -->
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 3c-2.2 0-4 1.8-4 4v1.2C7.2 9.1 6 10.9 6 13v2l-1 1v1h14v-1l-1-1v-2c0-2.1-1.2-3.9-2.9-4.8V7c0-2.2-1.8-4-4-4z"
-                                  fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-                            <path d="M9.5 18a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                            <!-- Punto de notificación (solo se muestra si hay notificaciones) -->
-                            <circle x-show="hasNotifications" cx="18" cy="6" r="2.6" fill="#ff3b30" stroke="#ffffff" stroke-width="0.8"/>
-                        </svg>
-                    </button>
-                    
-                    <!-- Dropdown de notificaciones -->
-                    <div x-show="open" 
-                         @click.away="open = false"
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 transform scale-95"
-                         x-transition:enter-end="opacity-100 transform scale-100"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100 transform scale-100"
-                         x-transition:leave-end="opacity-0 transform scale-95"
-                         class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                        <!-- Header del dropdown -->
-                        <div class="px-4 py-3 border-b border-gray-200">
-                            <h3 class="text-sm font-semibold text-gray-900">Notificaciones</h3>
-                        </div>
-                        
-                        <!-- Lista de notificaciones -->
-                        <div class="max-h-64 overflow-y-auto">
-                            <!-- Estado con notificaciones -->
-                            <div x-show="hasNotifications">
-                                <!-- Notificación 1 -->
-                                <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">Cita confirmada</p>
-                                            <p class="text-xs text-gray-500">Tu cita con Max para el 15 de enero ha sido confirmada</p>
-                                            <p class="text-xs text-gray-400 mt-1">Hace 2 horas</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Notificación 2 -->
-                                <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">Recordatorio de vacuna</p>
-                                            <p class="text-xs text-gray-500">Luna necesita su vacuna anual en los próximos 7 días</p>
-                                            <p class="text-xs text-gray-400 mt-1">Hace 1 día</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Notificación 3 -->
-                                <div class="px-4 py-3 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">QR actualizado</p>
-                                            <p class="text-xs text-gray-500">El código QR de Bella ha sido actualizado exitosamente</p>
-                                            <p class="text-xs text-gray-400 mt-1">Hace 3 días</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Estado sin notificaciones -->
-                            <div x-show="!hasNotifications" class="px-4 py-8 text-center">
-                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c-2.2 0-4 1.8-4 4v1.2C7.2 9.1 6 10.9 6 13v2l-1 1v1h14v-1l-1-1v-2c0-2.1-1.2-3.9-2.9-4.8V7c0-2.2-1.8-4-4-4z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.5 18a2.5 2.5 0 0 0 5 0"></path>
-                                </svg>
-                                <h3 class="mt-2 text-sm font-medium text-gray-900">No hay notificaciones</h3>
-                                <p class="mt-1 text-sm text-gray-500">Todo está al día</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Footer del dropdown -->
-                        <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                            <a href="{{ route('dashboard.cliente.notificaciones') }}" 
-                               class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                Ver todas las notificaciones
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                @endif
-                
-                @if(auth()->user()->hasRole('veterinario'))
-                <!-- Botón de notificaciones para veterinarios -->
-                <div x-data="{ open: false, hasNotifications: true }" class="relative">
-                    <button @click="open = !open" 
-                            class="relative inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition">
-                        <!-- Icono de campana dinámico -->
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 3c-2.2 0-4 1.8-4 4v1.2C7.2 9.1 6 10.9 6 13v2l-1 1v1h14v-1l-1-1v-2c0-2.1-1.2-3.9-2.9-4.8V7c0-2.2-1.8-4-4-4z"
-                                  fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-                            <path d="M9.5 18a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                            <!-- Punto de notificación (solo se muestra si hay notificaciones) -->
-                            <circle x-show="hasNotifications" cx="18" cy="6" r="2.6" fill="#ff3b30" stroke="#ffffff" stroke-width="0.8"/>
-                        </svg>
-                    </button>
-                    
-                    <!-- Dropdown de notificaciones -->
-                    <div x-show="open" 
-                         @click.away="open = false"
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 transform scale-95"
-                         x-transition:enter-end="opacity-100 transform scale-100"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100 transform scale-100"
-                         x-transition:leave-end="opacity-0 transform scale-95"
-                         class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                        <!-- Header del dropdown -->
-                        <div class="px-4 py-3 border-b border-gray-200">
-                            <h3 class="text-sm font-semibold text-gray-900">Notificaciones</h3>
-                        </div>
-                        
-                        <!-- Lista de notificaciones -->
-                        <div class="max-h-64 overflow-y-auto">
-                            <!-- Estado con notificaciones -->
-                            <div x-show="hasNotifications">
-                                <!-- Notificación 1 -->
-                                <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">Nueva cita programada</p>
-                                            <p class="text-xs text-gray-500">Rocky - Bulldog Francés</p>
-                                            <p class="text-xs text-gray-400">Hace 2 horas</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Notificación 2 -->
-                                <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">Solicitud aprobada</p>
-                                            <p class="text-xs text-gray-500">Catalina - Gato Criolla</p>
-                                            <p class="text-xs text-gray-400">Hace 4 horas</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Notificación 3 -->
-                                <div class="px-4 py-3 hover:bg-gray-50">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">Recordatorio de cita</p>
-                                            <p class="text-xs text-gray-500">Mañana 10:00 AM</p>
-                                            <p class="text-xs text-gray-400">Hace 6 horas</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Estado vacío -->
-                            <div x-show="!hasNotifications" class="px-4 py-8 text-center">
-                                <div class="flex flex-col items-center space-y-3">
-                                    <!-- Icono de campana vacía -->
-                                    <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 3c-2.2 0-4 1.8-4 4v1.2C7.2 9.1 6 10.9 6 13v2l-1 1v1h14v-1l-1-1v-2c0-2.1-1.2-3.9-2.9-4.8V7c0-2.2-1.8-4-4-4z"
-                                              fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-                                        <path d="M9.5 18a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                    <p class="text-sm text-gray-500">No hay notificaciones</p>
-                                    <p class="text-xs text-gray-400">Te notificaremos cuando tengas nuevas actualizaciones</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Footer con "Ver todas" -->
-                        <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                            <a href="{{ route('dashboard.veterinario.notificaciones.index') }}" 
-                               class="block text-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                                Ver todas las notificaciones
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                @endif
-                
-                <!-- Botón hamburger -->
-                <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition">
-                    <svg x-show="!open" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <svg x-show="open" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Menú desplegable -->
-        <div x-show="open" x-transition class="px-4 pb-3">
-            <nav class="space-y-2">
-                <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'dashboard' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600' }}">Dashboard</a>
-                @if(auth()->user()->hasRole('administrador') || auth()->user()->hasRole('super_admin'))
-                    <!-- Menú desplegable de Usuarios (Móvil) -->
-                    <div x-data="{ open: {{ $active === 'usuarios' ? 'true' : 'false' }} }" class="space-y-1">
-                        <button @click="open = !open" 
-                                class="flex w-full items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                <span>Usuarios</span>
-                            </div>
-                            <svg class="h-4 w-4 transition-transform duration-200" 
-                                 :class="{ 'rotate-180': open }" 
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                        <div x-show="open" 
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 transform scale-95"
-                             x-transition:enter-end="opacity-100 transform scale-100"
-                             x-transition:leave="transition ease-in duration-150"
-                             x-transition:leave-start="opacity-100 transform scale-100"
-                             x-transition:leave-end="opacity-0 transform scale-95"
-                             class="space-y-1 pl-6">
-                            <a href="{{ route('dashboard.usuarios') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'usuarios' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
-                                Lista de Usuarios
-                            </a>
-                            <a href="{{ route('usuarios.create') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                Nuevo Usuario
-                            </a>
-                        </div>
-                    </div>
-                    <!-- Dropdown de Solicitudes -->
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" 
-                                class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium {{ in_array($active, ['solicitudes', 'pet-requests']) ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600' }} transition-colors duration-200">
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
-                                <span>Solicitudes</span>
-                                @if($pendingRequests > 0)
-                                    <span class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white">{{ $pendingRequests }}</span>
-                                @endif
-                            </div>
-                            <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        
-                        <div x-show="open" 
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 transform scale-95"
-                             x-transition:enter-end="opacity-100 transform scale-100"
-                             x-transition:leave="transition ease-in duration-150"
-                             x-transition:leave-start="opacity-100 transform scale-100"
-                             x-transition:leave-end="opacity-0 transform scale-95"
-                             class="ml-4 mt-1 space-y-1">
-                            <a href="{{ route('dashboard.solicitudes') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-orange-50 hover:text-orange-600 transition-colors duration-200 {{ $active === 'solicitudes' ? 'bg-orange-50 text-orange-600' : '' }}">
-                                Solicitudes de Usuarios
-                            </a>
-                            <a href="{{ route('pet-requests.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 {{ $active === 'pet-requests' ? 'bg-blue-50 text-blue-600' : '' }}">
-                                Solicitudes de Mascotas
-                            </a>
-                        </div>
-                    </div>
-                    <a href="{{ route('qr.generator') }}" class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'qr-generator' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600' }}">Generador QR</a>
-                @endif
-                
-                @if(auth()->user()->hasRole('veterinario'))
-                    <!-- Menú desplegable de Veterinario (Móvil) -->
-                    <div x-data="{ open: {{ $active === 'veterinario-menu' ? 'true' : 'false' }} }" class="space-y-1">
-                        <button @click="open = !open" 
-                                class="flex w-full items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                <span>Veterinario</span>
-                            </div>
-                            <svg class="h-4 w-4 transition-transform duration-200" 
-                                 :class="{ 'rotate-180': open }" 
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                        <div x-show="open" 
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 transform scale-95"
-                             x-transition:enter-end="opacity-100 transform scale-100"
-                             x-transition:leave="transition ease-in duration-150"
-                             x-transition:leave-start="opacity-100 transform scale-100"
-                             x-transition:leave-end="opacity-0 transform scale-95"
-                             class="space-y-1 pl-6">
-                            <a href="{{ route('dashboard.veterinario.mascotas') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'mascotas' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                                Mis Mascotas
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.calendario.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'calendario' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                Mi Calendario
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.calendario.today') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'citas-hoy' ? 'bg-yellow-100 text-yellow-700' : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Citas de Hoy
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.calendario.create') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'nueva-cita' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                Nueva Cita
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.solicitudes.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'solicitudes-vet' ? 'bg-orange-100 text-orange-700' : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                Solicitudes
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.appointment-change-requests.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'cambios-citas' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-purple-50 hover:text-purple-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                </svg>
-                                Cambios de Citas
-                            </a>
-                            <a href="{{ route('dashboard.veterinario.notificaciones.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'notificaciones-vet' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-indigo-50 hover:text-indigo-600' }} transition-colors duration-200">
-                                <svg class="inline w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4 12h16M4 16h16M4 20h16" />
-                                </svg>
-                                Notificaciones
-                            </a>
-                        </div>
-                    </div>
-                @endif
-                
-                @if(auth()->user()->hasRole('cliente_qr'))
-                    <!-- Menú desplegable de Veterinarios (Móvil) -->
-                    <div x-data="{ open: {{ $active === 'veterinarios' ? 'true' : 'false' }} }" class="space-y-1">
-                        <button @click="open = !open" 
-                                class="flex w-full items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                <span>Veterinarios</span>
-                            </div>
-                            <svg class="h-4 w-4 transition-transform duration-200" 
-                                 :class="{ 'rotate-180': open }" 
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                        <div x-show="open" 
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 transform scale-95"
-                             x-transition:enter-end="opacity-100 transform scale-100"
-                             x-transition:leave="transition ease-in duration-150"
-                             x-transition:leave-start="opacity-100 transform scale-100"
-                             x-transition:leave-end="opacity-0 transform scale-95"
-                             class="space-y-1 pl-6">
-                            <a href="{{ route('dashboard.cliente.veterinarios.index') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium {{ $active === 'veterinarios' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
-                                Veterinarios Disponibles
-                            </a>
-                            <a href="{{ route('dashboard.cliente.veterinarios.mis-veterinarios') }}" 
-                               class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                Mis Veterinarios
-                            </a>
-                        </div>
-                    </div>
-                @endif
-                
-                <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-purple-50 hover:text-purple-700">Perfil</a>
-                
-                <!-- Separador -->
-                <div class="border-t border-gray-200 my-2"></div>
-                
-                <!-- Botón de logout en el menú desplegable -->
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200">
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Cerrar sesión
-                    </button>
-                </form>
-            </nav>
-        </div>
-    </nav>
+    {{-- El navbar móvil se ha eliminado - ahora usamos sidebar deslizable --}}
 
     {{-- Sidebar para desktop --}}
-    <aside class="hidden lg:block fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-lg">
+    <aside class="hidden lg:block fixed top-0 left-0 z-40 h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg">
         <!-- Logo -->
-        <div class="flex h-16 items-center border-b border-gray-200 px-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div class="flex h-16 items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600">
             <div class="flex items-center space-x-3">
-                <span class="text-lg sm:text-xl font-bold text-gray-800">Buky World</span>
+                <span class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Buky World</span>
             </div>
         </div>
 
         <!-- Enlaces principales -->
-        <div class="flex flex-col h-full bg-gray-50">
+        <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-800">
             <div class="flex-1 py-4 overflow-y-auto">
                 <nav class="space-y-2 px-4">
                     <!-- Dashboard -->
                     <a href="{{ route('dashboard') }}"
                         @class([
                              'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
-                             'bg-blue-100 text-blue-700 border-l-4 border-blue-500 shadow-sm' => $active === 'dashboard',
-                             'text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-l-4 hover:border-blue-300' => $active !== 'dashboard'
+                             'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-4 border-blue-500 shadow-sm' => $active === 'dashboard',
+                             'text-gray-600 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-300 hover:border-l-4 hover:border-blue-300' => $active !== 'dashboard'
                         ])>
                         <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
                              @class([
-                                 'text-blue-600' => $active === 'dashboard',
-                                 'text-gray-500 group-hover:text-blue-500' => $active !== 'dashboard'
+                                 'text-blue-600 dark:text-blue-400' => $active === 'dashboard',
+                                 'text-gray-500 dark:text-gray-300 group-hover:text-blue-500 dark:group-hover:text-blue-400' => $active !== 'dashboard'
                              ])
                              fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -494,9 +39,9 @@
                         <!-- Menú desplegable de Usuarios -->
                         <div x-data="{ open: {{ $active === 'usuarios' ? 'true' : 'false' }} }" class="space-y-2">
                             <button @click="open = !open" 
-                                    class="group flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300 transition-all duration-200">
+                                    class="group flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 dark:text-white hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-300 hover:border-l-4 hover:border-green-300 transition-all duration-200">
                                 <div class="flex items-center">
-                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-300 group-hover:text-green-500 dark:group-hover:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
@@ -545,7 +90,7 @@
                                     <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
                                          @class([
                                              'text-orange-600' => in_array($active, ['solicitudes', 'pet-requests']),
-                                             'text-gray-500 group-hover:text-orange-500' => !in_array($active, ['solicitudes', 'pet-requests'])
+                                             'text-gray-500 dark:text-gray-300 group-hover:text-orange-500 dark:group-hover:text-orange-400' => !in_array($active, ['solicitudes', 'pet-requests'])
                                          ])
                                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -600,7 +145,7 @@
                             <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
                                  @class([
                                      'text-purple-600' => $active === 'qr-generator',
-                                     'text-gray-500 group-hover:text-purple-500' => $active !== 'qr-generator'
+                                     'text-gray-500 dark:text-gray-300 group-hover:text-purple-500 dark:group-hover:text-purple-400' => $active !== 'qr-generator'
                                  ])
                                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -612,131 +157,98 @@
                     @endif
                     
                     @if(auth()->user()->hasRole('veterinario'))
-                        <!-- Menú desplegable de Veterinario -->
-                        <div x-data="{ open: {{ $active === 'veterinario-menu' ? 'true' : 'false' }} }" class="space-y-2">
-                            <button @click="open = !open" 
-                                    class="group flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300 transition-all duration-200">
-                                <div class="flex items-center">
-                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span class="truncate">Veterinario</span>
-                                </div>
-                                <svg class="h-4 w-4 text-gray-400 transition-transform duration-200" 
-                                     :class="{ 'rotate-180': open }" 
-                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            
-                            <div x-show="open" 
-                                 x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="opacity-0 transform scale-95"
-                                 x-transition:enter-end="opacity-100 transform scale-100"
-                                 x-transition:leave="transition ease-in duration-150"
-                                 x-transition:leave-start="opacity-100 transform scale-100"
-                                 x-transition:leave-end="opacity-0 transform scale-95"
-                                 class="space-y-1 pl-8 sm:pl-11">
+                        <!-- Menú directo de Veterinario (Desktop) -->
+                        
                                 <a href="{{ route('dashboard.veterinario.calendario.index') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           @class([
+                                'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
+                                'bg-blue-100 text-blue-700 border-l-4 border-blue-500 shadow-sm' => $active === 'calendario',
+                                'text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-l-4 hover:border-blue-300' => $active !== 'calendario'
+                           ])>
+                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
+                                 @class([
+                                     'text-blue-600' => $active === 'calendario',
+                                     'text-gray-500 group-hover:text-blue-500' => $active !== 'calendario'
+                                 ])
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span class="truncate">Mi Calendario</span>
                                 </a>
-                                <a href="{{ route('dashboard.veterinario.appointment-change-requests.index') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        
+                        <a href="{{ route('dashboard.veterinario.calendario.today') }}"
+                           @class([
+                                'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
+                                'bg-yellow-100 text-yellow-700 border-l-4 border-yellow-500 shadow-sm' => $active === 'citas-hoy',
+                                'text-gray-600 hover:bg-yellow-50 hover:text-yellow-600 hover:border-l-4 hover:border-yellow-300' => $active !== 'citas-hoy'
+                           ])>
+                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
+                                 @class([
+                                     'text-yellow-600' => $active === 'citas-hoy',
+                                     'text-gray-500 group-hover:text-yellow-500' => $active !== 'citas-hoy'
+                                 ])
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <span class="truncate">Cambios de Citas</span>
-                                </a>
-                                <a href="{{ route('dashboard.veterinario.solicitudes.index') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span class="truncate">Solicitudes</span>
-                                </a>
-                                <a href="{{ route('dashboard.veterinario.notificaciones.index') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z" />
-                                    </svg>
-                                    <span class="truncate">Notificaciones</span>
-                                </a>
-                            </div>
-                        </div>
+                            <span class="truncate">Citas de Hoy</span>
+                        </a>
+                        
+                        
+                        
+                        <a href="{{ route('dashboard.veterinario.solicitudes.index') }}"
+                           @class([
+                                'group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium transition-all duration-200',
+                                'bg-red-100 text-red-700 border-l-4 border-red-500 shadow-sm' => $active === 'solicitudes-citas',
+                                'text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-l-4 hover:border-red-300' => $active !== 'solicitudes-citas'
+                           ])>
+                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5"
+                                 @class([
+                                     'text-red-600' => $active === 'solicitudes-citas',
+                                     'text-gray-500 group-hover:text-red-500' => $active !== 'solicitudes-citas'
+                                 ])
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="truncate">Solicitudes de Citas</span>
+                        </a>
+                        
+                        
+                        
                     @endif
                     
                     @if(auth()->user()->hasRole('cliente_qr'))
-                        <!-- Menú desplegable de Veterinarios -->
-                        <div x-data="{ open: {{ $active === 'veterinarios' ? 'true' : 'false' }} }" class="space-y-2">
-                            <button @click="open = !open" 
-                                    class="group flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-l-4 hover:border-green-300 transition-all duration-200">
-                                <div class="flex items-center">
-                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span class="truncate">Veterinarios</span>
-                                </div>
-                                <svg class="h-4 w-4 text-gray-400 transition-transform duration-200" 
-                                     :class="{ 'rotate-180': open }" 
-                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            <div x-show="open" 
-                                 x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="opacity-0 transform scale-95"
-                                 x-transition:enter-end="opacity-100 transform scale-100"
-                                 x-transition:leave="transition ease-in duration-150"
-                                 x-transition:leave-start="opacity-100 transform scale-100"
-                                 x-transition:leave-end="opacity-0 transform scale-95"
-                                 class="space-y-1 pl-8 sm:pl-11">
-                                <a href="{{ route('dashboard.cliente.veterinarios.index') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium {{ $active === 'veterinarios' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-600' }} transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <!-- Menú directo de Veterinarios (Desktop) -->
+                        <a href="{{ route('dashboard.cliente.veterinarios.index') }}"
+                           class="group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium {{ $active === 'veterinarios' ? 'bg-green-100 text-green-700 border-l-4 border-green-300' : 'text-gray-600 dark:text-white hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-300 hover:border-l-4 hover:border-green-300' }} transition-all duration-200">
+                                    <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-300 group-hover:text-green-500 dark:group-hover:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                     </svg>
                                     <span class="truncate">Veterinarios Disponibles</span>
                                 </a>
                                 <a href="{{ route('dashboard.cliente.veterinarios.mis-veterinarios') }}"
-                                   class="group flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-medium text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors duration-200">
-                                    <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           class="group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium {{ $active === 'mis-veterinarios' ? 'bg-green-100 text-green-700 border-l-4 border-green-300' : 'text-gray-600 dark:text-white hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-300 hover:border-l-4 hover:border-green-300' }} transition-all duration-200">
+                            <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-300 group-hover:text-green-500 dark:group-hover:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span class="truncate">Mis Veterinarios</span>
                                 </a>
-                            </div>
-                        </div>
                     @endif
                     
                     <!-- Enlace de perfil -->
-                    <a href="{{ route('profile.edit') }}" class="group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-colors duration-200">
+                    <a href="{{ route('profile.edit') }}" class="group flex items-center rounded-lg px-3 sm:px-4 py-3 text-sm font-medium text-gray-600 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200">
                         <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 group-hover:text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span class="truncate">Perfil</span>
                     </a>
                     
-                    <!-- Botón de notificaciones solo para móviles -->
-                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 sm:hidden">
-                        <a href="{{ route('dashboard.cliente.notificaciones') }}" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200">
-                            <svg class="mr-3 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4 12h16M4 16h16M4 20h16"></path>
-                            </svg>
-                            <span class="truncate">Notificaciones</span>
-                        </a>
-                    </div>
                     
                     <!-- Botón de logout en sidebar de PC -->
-                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200">
-                                <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button type="submit" class="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
                                 <span class="truncate">Cerrar sesión</span>

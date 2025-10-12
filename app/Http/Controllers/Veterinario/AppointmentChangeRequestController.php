@@ -28,7 +28,7 @@ class AppointmentChangeRequestController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15);
         
-        return view('dashboard.veterinario.appointment-change-requests.index', compact('pendingRequests', 'allRequests'));
+        return view('veterinarian.appointment-change-requests.index', compact('pendingRequests', 'allRequests'));
     }
     
     /**
@@ -43,7 +43,7 @@ class AppointmentChangeRequestController extends Controller
         
         $changeRequest->load(['appointment.pet', 'client', 'veterinarian']);
         
-        return view('dashboard.veterinario.appointment-change-requests.show', compact('changeRequest'));
+        return view('veterinarian.appointment-change-requests.show', compact('changeRequest'));
     }
     
     /**

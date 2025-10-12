@@ -13,8 +13,7 @@ class DashboardController extends Controller
 
     public function __construct(DashboardService $dashboardService)
     {
-        // En Laravel 11 no usamos middleware en el controlador
-        // sino en las rutas
+
         $this->dashboardService = $dashboardService;
     }
 
@@ -52,6 +51,38 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('dashboard.cliente.index', compact('pets', 'stats'));
+        // Obtener citas próximas reales
+        $upcomingAppointments = $this->getUpcomingAppointments();
+
+        return view('client.index', compact('pets', 'stats', 'upcomingAppointments'));
+    }
+
+    /**
+     * Obtener citas próximas del cliente
+     */
+    private function getUpcomingAppointments()
+    {
+        $userId = Auth::id();
+
+        // Obtener solicitudes de citas aceptadas
+        $appointmentRequests = \App\Models\AppointmentRequest::where('client_id', $userId)
+            ->where('status', 'aceptado')
+            ->where('scheduled_datetime', '>=', now())
+            ->with(['pet', 'veterinarian'])
+            ->orderBy('scheduled_datetime', 'asc')
+            ->limit(5)
+            ->get();
+
+        return $appointmentRequests->map(function ($request) {
+            return [
+                'id' => $request->id,
+                'pet_name' => $request->pet->nombre ?? 'Mascota',
+                'date' => $request->scheduled_datetime->format('d/m/Y'),
+                'time' => $request->scheduled_datetime->format('H:i'),
+                'type' => $request->getAppointmentTypeLabelAttribute(),
+                'veterinarian' => $request->veterinarian->name ?? 'Veterinario',
+                'description' => $request->description,
+            ];
+        });
     }
 }

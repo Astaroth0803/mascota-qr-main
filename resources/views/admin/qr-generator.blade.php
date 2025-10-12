@@ -1,177 +1,158 @@
-@extends('layouts.dashboard')
+@extends('layouts.standard')
 
 @section('title', 'Generador de Códigos QR')
 
-@section('content')
-<div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="lg:ml-64">
-            <div class="px-4 sm:px-6 lg:px-8">
-                <div class="py-4 lg:py-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div class="flex-1 min-w-0">
-                            <h1 class="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">Generador de Códigos QR</h1>
-                            <p class="text-sm lg:text-base text-gray-600 mt-1">Genera códigos QR para las mascotas registradas</p>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-2 lg:gap-3">
-                            <a href="{{ route('dashboard.administrador') }}" 
-                               class="inline-flex items-center justify-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
-                                <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                </svg>
-                                <span>Volver al Dashboard</span>
-                            </a>
-                        </div>
-                    </div>
-                </div> 
+@php
+    $title = 'Generador de Códigos QR';
+    $subtitle = 'Genera códigos QR para las mascotas registradas';
+@endphp
+
+@section('main-content')
+<div class="w-full">
+
+    <!-- Contenido principal -->
+    <div class="w-full">
+        <div class="px-2 sm:px-4 lg:px-6 xl:px-8 py-4 lg:py-6">
+    {{-- Botones de acción --}}
+    <div class="mb-6 flex flex-col sm:flex-row gap-4">
+        <button id="selectAllBtn" class="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
+            <i class="fas fa-check-square mr-2"></i>Seleccionar Todas
+        </button>
+        <button id="deselectAllBtn" class="bg-gray-500 dark:bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors">
+            <i class="fas fa-square mr-2"></i>Deseleccionar Todas
+        </button>
+        <button id="generateSelectedBtn" class="bg-green-500 dark:bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-600 dark:hover:bg-green-700 transition-colors">
+            <i class="fas fa-qrcode mr-2"></i>Generar QR Seleccionadas
+        </button>
+    </div>
+
+    {{-- Filtros --}}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Buscar Mascota</label>
+                <input type="text" id="searchPet" placeholder="Nombre de la mascota..." 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Usuario</label>
+                <select id="filterUser" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Todos los usuarios</option>
+                    @foreach($pets->pluck('user.name', 'user.id')->unique() as $userId => $userName)
+                        <option value="{{ $userId }}">{{ $userName }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado QR</label>
+                <select id="filterQR" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Todos</option>
+                    <option value="with_qr">Con QR</option>
+                    <option value="without_qr">Sin QR</option>
+                </select>
             </div>
         </div>
     </div>
 
-    <!-- Contenido principal -->
-    <div class="lg:ml-64">
-        <div class="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-                {{-- Botones de acción --}}
-                <div class="mb-6 flex flex-col sm:flex-row gap-4">
-                    <button id="selectAllBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                        <i class="fas fa-check-square mr-2"></i>Seleccionar Todas
-                    </button>
-                    <button id="deselectAllBtn" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-square mr-2"></i>Deseleccionar Todas
-                    </button>
-                    <button id="generateSelectedBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                        <i class="fas fa-qrcode mr-2"></i>Generar QR Seleccionadas
-                    </button>
-                </div>
-
-                {{-- Filtros --}}
-                <div class="bg-white rounded-lg shadow p-6 mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar Mascota</label>
-                            <input type="text" id="searchPet" placeholder="Nombre de la mascota..." 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Usuario</label>
-                            <select id="filterUser" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Todos los usuarios</option>
-                                @foreach($pets->pluck('user.name', 'user.id')->unique() as $userId => $userName)
-                                    <option value="{{ $userId }}">{{ $userName }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado QR</label>
-                            <select id="filterQR" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Todos</option>
-                                <option value="with_qr">Con QR</option>
-                                <option value="without_qr">Sin QR</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Tabla de mascotas --}}
-                <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">Mascotas Registradas</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <input type="checkbox" id="selectAllCheckbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mascota</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dueño</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Especie/Raza</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado QR</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+    {{-- Tabla de mascotas --}}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Mascotas Registradas</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <input type="checkbox" id="selectAllCheckbox" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                        </th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mascota</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Dueño</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">Especie/Raza</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado QR</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="petsTableBody" class="bg-white divide-y divide-gray-200">
+                <tbody id="petsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 @foreach($pets as $pet)
-                                <tr class="pet-row" data-pet-id="{{ $pet->id }}" data-pet-name="{{ $pet->nombre }}" data-user-id="{{ $pet->user_id }}" data-has-qr="{{ $pet->qr_code ? 'true' : 'false' }}">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <input type="checkbox" class="pet-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $pet->id }}">
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            @if($pet->profile_image)
-                                                <img class="h-10 w-10 rounded-full object-cover" src="{{ asset('storage/' . $pet->profile_image) }}" alt="{{ $pet->nombre }}">
-                                            @else
-                                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                                    <i class="fas fa-paw text-gray-400"></i>
-                                                </div>
-                                            @endif
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ $pet->nombre }}</div>
-                                                <div class="text-sm text-gray-500">ID: {{ $pet->id }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $pet->user->name ?? 'N/A' }}</div>
-                                        <div class="text-sm text-gray-500">{{ $pet->user->email ?? 'N/A' }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $pet->especie }}</div>
-                                        <div class="text-sm text-gray-500">{{ $pet->raza }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($pet->qr_code)
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <i class="fas fa-check-circle mr-1"></i>Con QR
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                <i class="fas fa-times-circle mr-1"></i>Sin QR
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-2">
-                                            @if($pet->qr_code)
-                                                <button onclick="showQRModal('{{ $pet->nombre }}', '{{ $pet->qr_code }}', '{{ route('public.pet.qr', $pet->qr_code) }}')" 
-                                                        class="text-blue-600 hover:text-blue-900">
-                                                    <i class="fas fa-qrcode"></i> Ver QR
-                                                </button>
-                                                <a href="{{ route('public.pet.qr', $pet->qr_code) }}" target="_blank" 
-                                                   class="text-green-600 hover:text-green-900">
-                                                    <i class="fas fa-external-link-alt"></i> Ver Perfil
-                                                </a>
-                                            @else
-                                                <button onclick="generateSingleQR({{ $pet->id }})" 
-                                                        class="text-green-600 hover:text-green-900">
-                                                    <i class="fas fa-qrcode"></i> Generar QR
-                                                </button>
-                                            @endif
-                                            <a href="{{ route('usuarios.mascotas', $pet->user_id) }}" 
-                                               class="text-purple-600 hover:text-purple-900">
-                                                <i class="fas fa-user"></i> Ver Usuario
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                    <tr class="pet-row hover:bg-gray-50 dark:hover:bg-gray-700" data-pet-id="{{ $pet->id }}" data-pet-name="{{ $pet->nombre }}" data-user-id="{{ $pet->user_id }}" data-has-qr="{{ $pet->qr_code ? 'true' : 'false' }}">
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" class="pet-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" value="{{ $pet->id }}">
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                @if($pet->profile_image)
+                                    <img class="h-10 w-10 rounded-full object-cover" src="{{ asset('storage/' . $pet->profile_image) }}" alt="{{ $pet->nombre }}">
+                                @else
+                                    <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                                        <i class="fas fa-paw text-gray-400 dark:text-gray-500"></i>
+                                    </div>
+                                @endif
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $pet->nombre }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ $pet->id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $pet->user->name ?? 'N/A' }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $pet->user->email ?? 'N/A' }}</div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $pet->especie }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $pet->raza }}</div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                            @if($pet->qr_code)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                    <i class="fas fa-check-circle mr-1"></i>Con QR
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                    <i class="fas fa-times-circle mr-1"></i>Sin QR
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                                @if($pet->qr_code)
+                                    <button onclick="showQRModal('{{ $pet->nombre }}', '{{ $pet->qr_code }}', '{{ route('public.pet.qr', $pet->qr_code) }}')" 
+                                            class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-xs sm:text-sm">
+                                        <i class="fas fa-qrcode"></i> <span class="hidden sm:inline">Ver QR</span>
+                                    </button>
+                                    <a href="{{ route('public.pet.qr', $pet->qr_code) }}" target="_blank" 
+                                       class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 text-xs sm:text-sm">
+                                        <i class="fas fa-external-link-alt"></i> <span class="hidden sm:inline">Ver Perfil</span>
+                                    </a>
+                                @else
+                                    <button onclick="generateSingleQR({{ $pet->id }})" 
+                                            class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 text-xs sm:text-sm">
+                                        <i class="fas fa-qrcode"></i> <span class="hidden sm:inline">Generar QR</span>
+                                    </button>
+                                @endif
+                                <a href="{{ route('usuarios.mascotas', $pet->user_id) }}" 
+                                   class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 text-xs sm:text-sm">
+                                    <i class="fas fa-user"></i> <span class="hidden sm:inline">Ver Usuario</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
             </div>
         </div>
     </div>
 
     <!-- Modal de código QR -->
     <div id="qrModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
+        <div class="relative top-10 sm:top-20 mx-auto p-4 sm:p-5 border w-11/12 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-1/3 shadow-lg rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <div class="mt-3">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900" id="qrModalTitle">Código QR</h3>
-                    <button onclick="closeQRModal()" class="text-gray-400 hover:text-gray-600">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white" id="qrModalTitle">Código QR</h3>
+                    <button onclick="closeQRModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -179,27 +160,26 @@
                     <div id="qrCodeContainer" class="flex justify-center mb-4">
                         <!-- El código QR se generará aquí -->
                     </div>
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-600 mb-2">Código: <span id="qrCodeText" class="font-mono text-xs bg-gray-100 px-2 py-1 rounded"></span></p>
-                        <p class="text-sm text-gray-600">URL: <span id="qrUrlText" class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all"></span></p>
-                    </div>
-                    <div class="flex space-x-2 justify-center">
-                        <button onclick="downloadQR()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-download mr-2"></i>Descargar QR
-                        </button>
-                        <button onclick="printQR()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                            <i class="fas fa-print mr-2"></i>Imprimir QR
-                        </button>
-                        <button onclick="copyQRUrl()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors">
-                            <i class="fas fa-copy mr-2"></i>Copiar URL
-                        </button>
-                    </div>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Código: <span id="qrCodeText" class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-900 dark:text-white"></span></p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">URL: <span id="qrUrlText" class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded break-all text-gray-900 dark:text-white"></span></p>
                 </div>
-                <div class="mt-6 flex justify-end">
-                    <button onclick="closeQRModal()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                        Cerrar
+                <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                    <button onclick="downloadQR()" class="bg-blue-500 dark:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors text-sm">
+                        <i class="fas fa-download mr-1 sm:mr-2"></i><span class="hidden sm:inline">Descargar QR</span><span class="sm:hidden">Descargar</span>
+                    </button>
+                    <button onclick="printQR()" class="bg-green-500 dark:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-600 dark:hover:bg-green-700 transition-colors text-sm">
+                        <i class="fas fa-print mr-1 sm:mr-2"></i><span class="hidden sm:inline">Imprimir QR</span><span class="sm:hidden">Imprimir</span>
+                    </button>
+                    <button onclick="copyQRUrl()" class="bg-purple-500 dark:bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-600 dark:hover:bg-purple-700 transition-colors text-sm">
+                        <i class="fas fa-copy mr-1 sm:mr-2"></i><span class="hidden sm:inline">Copiar URL</span><span class="sm:hidden">Copiar</span>
                     </button>
                 </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeQRModal()" class="bg-gray-500 dark:bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors">
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>

@@ -27,17 +27,23 @@ class AppointmentController extends Controller
         // Obtener todas las mascotas asignadas al veterinario
         $assignedPets = Auth::user()->mascotasActivas()->get();
         
-        // Obtener todas las citas del veterinario (pasadas y futuras)
+        // Obtener todas las citas del veterinario
         $appointments = Appointment::where('veterinarian_id', $veterinarianId)
-            ->whereIn('status', [Appointment::STATUS_SCHEDULED, Appointment::STATUS_IN_PROGRESS, Appointment::STATUS_COMPLETED])
-            ->whereNotNull('scheduled_datetime')
             ->with(['pet.user', 'client'])
             ->orderBy('scheduled_datetime', 'desc')
             ->get();
         
         // Separar citas pasadas y futuras
-        $upcomingAppointments = $appointments->where('scheduled_datetime', '>=', now());
-        $pastAppointments = $appointments->where('scheduled_datetime', '<', now());
+        $upcomingAppointments = $appointments->filter(function($appointment) {
+            return $appointment->scheduled_datetime >= now() && 
+                   !in_array($appointment->status, ['finalizada', 'completada', 'cita_terminada']);
+        });
+        
+        // Historial: citas pasadas Y citas finalizadas
+        $pastAppointments = $appointments->filter(function($appointment) {
+            return $appointment->scheduled_datetime < now() || 
+                   in_array($appointment->status, ['finalizada', 'completada', 'cita_terminada']);
+        });
         
         // Obtener estadísticas del calendario
         $stats = [
@@ -49,7 +55,7 @@ class AppointmentController extends Controller
             'assigned_pets_count' => $assignedPets->count()
         ];
         
-        return view('dashboard.veterinario.calendario', compact('assignedPets', 'appointments', 'upcomingAppointments', 'pastAppointments', 'stats'));
+        return view('veterinarian.calendario', compact('assignedPets', 'appointments', 'upcomingAppointments', 'pastAppointments', 'stats'));
     }
     
     /**
@@ -65,7 +71,7 @@ class AppointmentController extends Controller
         $assignedPets = Auth::user()->mascotasActivas()->with('user')->get();
         $appointmentTypes = Appointment::getTypeOptions();
         
-        return view('dashboard.veterinario.crear-cita', compact('assignedPets', 'appointmentTypes'));
+        return view('veterinarian.crear-cita', compact('assignedPets', 'appointmentTypes'));
     }
     
     /**
@@ -104,7 +110,7 @@ class AppointmentController extends Controller
         $validated['veterinarian_id'] = $veterinarianId;
         $validated['vet_name'] = $validated['vet_name'] ?: Auth::user()->name;
         
-        $appointment = VaccinationRecord::create($validated);
+        $appointment = Appointment::create($validated);
         
         // Actualizar el peso de la mascota si se proporciona (solo veterinarios)
         if (isset($validated['pet_weight']) && $validated['pet_weight'] !== null) {
@@ -130,7 +136,16 @@ class AppointmentController extends Controller
             ->with(['pet.user', 'client'])
             ->findOrFail($id);
         
-        return view('dashboard.veterinario.detalle-cita', compact('appointment'));
+        // Debug: Log the appointment data
+        \Log::info('Appointment Debug:', [
+            'id' => $appointment->id,
+            'status' => $appointment->status,
+            'scheduled_datetime' => $appointment->scheduled_datetime,
+            'veterinarian_id' => $appointment->veterinarian_id,
+            'pet_id' => $appointment->pet_id
+        ]);
+        
+        return view('veterinarian.detalle-cita', compact('appointment'));
     }
     
     /**
@@ -147,10 +162,16 @@ class AppointmentController extends Controller
         $appointment = Appointment::where('veterinarian_id', $veterinarianId)
             ->findOrFail($id);
         
+        // No permitir editar citas finalizadas
+        if ($appointment->status === 'finalizada') {
+            return redirect()->route('dashboard.veterinario.calendario.show', $appointment->id)
+                ->with('error', 'No se puede editar una cita que ya ha sido finalizada.');
+        }
+        
         $assignedPets = Auth::user()->mascotasActivas()->with('user')->get();
         $appointmentTypes = Appointment::getTypeOptions();
         
-        return view('dashboard.veterinario.editar-cita', compact('appointment', 'assignedPets', 'appointmentTypes'));
+        return view('veterinarian.editar-cita', compact('appointment', 'assignedPets', 'appointmentTypes'));
     }
     
     /**
@@ -164,32 +185,35 @@ class AppointmentController extends Controller
 
         $veterinarianId = Auth::id();
         
-        $appointment = VaccinationRecord::where('veterinarian_id', $veterinarianId)
+        $appointment = Appointment::where('veterinarian_id', $veterinarianId)
             ->findOrFail($id);
         
+        // No permitir editar citas finalizadas
+        if ($appointment->status === 'finalizada') {
+            return redirect()->route('dashboard.veterinario.calendario.show', $appointment->id)
+                ->with('error', 'No se puede modificar una cita que ya ha sido finalizada.');
+        }
+        
         $validated = $request->validate([
-            'record_type' => 'required|string',
-            'date' => 'required|date',
-            'time' => 'required|date_format:H:i',
-            'vet_name' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'observations' => 'nullable|string',
-            'diagnosis' => 'nullable|string',
-            'treatment' => 'nullable|string',
-            'vaccine_name' => 'nullable|string|max:255',
-            'next_date' => 'nullable|date|after:date',
-            'pet_weight' => 'nullable|numeric|min:0|max:999.99'
+            'status' => 'required|string|in:pendiente,agendada,en_progreso,finalizada,cancelada'
         ]);
         
-        $validated['vet_name'] = $validated['vet_name'] ?: Auth::user()->name;
+        // Log para debug
+        \Log::info('Updating appointment', [
+            'appointment_id' => $id,
+            'current_status' => $appointment->status,
+            'new_status' => $validated['status'],
+            'validated_data' => $validated
+        ]);
         
         $appointment->update($validated);
         
-        // Actualizar el peso de la mascota si se proporciona (solo veterinarios)
-        if (isset($validated['pet_weight']) && $validated['pet_weight'] !== null) {
-            $pet = $appointment->pet;
-            $pet->update(['peso' => $validated['pet_weight']]);
-        }
+        // Verificar que se actualizó
+        $appointment->refresh();
+        \Log::info('Appointment updated', [
+            'appointment_id' => $id,
+            'new_status' => $appointment->status
+        ]);
         
         return redirect()->route('dashboard.veterinario.calendario.index')
                         ->with('success', 'Cita actualizada exitosamente');
@@ -206,7 +230,7 @@ class AppointmentController extends Controller
 
         $veterinarianId = Auth::id();
         
-        $appointment = VaccinationRecord::where('veterinarian_id', $veterinarianId)
+        $appointment = Appointment::where('veterinarian_id', $veterinarianId)
             ->findOrFail($id);
         
         $petName = $appointment->pet->nombre;
@@ -228,27 +252,27 @@ class AppointmentController extends Controller
         $veterinarianId = Auth::id();
         $month = $request->get('month', now()->format('Y-m'));
         
-        $appointments = Appointment::where('veterinarian_id', $veterinarianId)
-            ->whereIn('status', [Appointment::STATUS_SCHEDULED, Appointment::STATUS_IN_PROGRESS, Appointment::STATUS_COMPLETED])
+        $appointments = \App\Models\AppointmentRequest::where('veterinarian_id', $veterinarianId)
+            ->whereIn('status', ['aceptado', 'rechazado'])
             ->whereNotNull('scheduled_datetime')
             ->whereYear('scheduled_datetime', Carbon::parse($month)->year)
             ->whereMonth('scheduled_datetime', Carbon::parse($month)->month)
-            ->with(['pet.user', 'client'])
+            ->with(['pet.user', 'client', 'appointment'])
             ->orderBy('scheduled_datetime')
             ->get();
         
-        $formattedAppointments = $appointments->map(function($appointment) {
+        $formattedAppointments = $appointments->map(function($appointmentRequest) {
             return [
-                'id' => $appointment->id,
-                'title' => $appointment->pet->nombre . ' - ' . $appointment->record_type_label,
-                'date' => $appointment->scheduled_datetime ? $appointment->scheduled_datetime->format('Y-m-d') : null,
-                'time' => $appointment->scheduled_datetime ? $appointment->scheduled_datetime->format('H:i') : null,
-                'type' => $appointment->record_type,
-                'pet_name' => $appointment->pet->nombre,
-                'owner_name' => $appointment->client->name ?? 'N/A',
-                'vet_name' => $appointment->veterinarian->name ?? 'N/A',
-                'location' => $appointment->location,
-                'url' => route('dashboard.veterinario.calendario.show', $appointment->id)
+                'id' => $appointmentRequest->id,
+                'title' => $appointmentRequest->pet->nombre . ' - ' . $appointmentRequest->getAppointmentTypeLabelAttribute(),
+                'date' => $appointmentRequest->scheduled_datetime ? $appointmentRequest->scheduled_datetime->format('Y-m-d') : null,
+                'time' => $appointmentRequest->scheduled_datetime ? $appointmentRequest->scheduled_datetime->format('H:i') : null,
+                'type' => $appointmentRequest->appointment_type,
+                'pet_name' => $appointmentRequest->pet->nombre,
+                'owner_name' => $appointmentRequest->client->name ?? 'N/A',
+                'vet_name' => $appointmentRequest->veterinarian->name ?? 'N/A',
+                'status' => $appointmentRequest->status,
+                'url' => route('appointment-requests.show', $appointmentRequest->id)
             ];
         });
         
@@ -267,12 +291,13 @@ class AppointmentController extends Controller
         $veterinarianId = Auth::id();
         $today = now()->toDateString();
         
-        $todayAppointments = VaccinationRecord::where('veterinarian_id', $veterinarianId)
-            ->where('date', $today)
-            ->with(['pet.user', 'veterinarian'])
-            ->orderBy('time')
+        $todayAppointments = \App\Models\AppointmentRequest::where('veterinarian_id', $veterinarianId)
+            ->whereDate('scheduled_datetime', $today)
+            ->whereIn('status', ['aceptado', 'rechazado'])
+            ->with(['pet.user', 'client', 'appointment'])
+            ->orderBy('scheduled_datetime')
             ->get();
         
-        return view('dashboard.veterinario.citas-hoy', compact('todayAppointments'));
+        return view('veterinarian.citas-hoy', compact('todayAppointments'));
     }
 }

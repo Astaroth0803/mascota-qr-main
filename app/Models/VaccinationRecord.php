@@ -55,14 +55,26 @@ class VaccinationRecord extends Model
         'file_path',     // Campo anterior para compatibilidad
         'vaccination_date', // Campo anterior para compatibilidad
         'vaccine_type',    // Campo anterior para compatibilidad
-        'notes'           // Campo anterior para compatibilidad
+        'notes',           // Campo anterior para compatibilidad
+        // Campos específicos para vacunación
+        'nombre_tecnico',
+        'nombre_comercial',
+        'lote',
+        'laboratorio',
+        'fecha_caducidad',
+        'fecha_expedicion',
+        'fecha_aplicacion',
+        'consulta_subtipo'
     ];
 
     protected $casts = [
         'date' => 'date',
         'vaccination_date' => 'date',
         'next_date' => 'date',
-        'time' => 'datetime:H:i:s'
+        'time' => 'datetime:H:i:s',
+        'fecha_caducidad' => 'date',
+        'fecha_expedicion' => 'date',
+        'fecha_aplicacion' => 'date'
     ];
 
     protected $dates = [

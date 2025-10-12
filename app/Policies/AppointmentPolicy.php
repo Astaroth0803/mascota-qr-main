@@ -2,88 +2,32 @@
 
 namespace App\Policies;
 
-use App\Models\Appointment;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use App\Models\Appointment;
 
 class AppointmentPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Determina si el veterinario puede acceder a la cita.
      */
-    public function viewAny(User $user): bool
+    public function access(User $user, Appointment $appointment)
     {
-        return $user->hasAnyRole(['veterinario', 'cliente_qr']);
+        return $user->id === $appointment->veterinarian_id;
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Determina si el veterinario puede aceptar la cita.
      */
-    public function view(User $user, Appointment $appointment): bool
+    public function accept(User $user, Appointment $appointment)
     {
-        // Veterinario puede ver sus citas
-        if ($user->hasRole('veterinario') && $appointment->veterinarian_id === $user->id) {
-            return true;
-        }
-        
-        // Cliente puede ver sus citas
-        if ($user->hasRole('cliente_qr') && $appointment->client_id === $user->id) {
-            return true;
-        }
-        
-        return false;
+        return $user->id === $appointment->veterinarian_id && $appointment->canBeScheduled();
     }
 
     /**
-     * Determine whether the user can create models.
+     * Determina si el veterinario puede rechazar la cita.
      */
-    public function create(User $user): bool
+    public function reject(User $user, Appointment $appointment)
     {
-        return $user->hasAnyRole(['veterinario', 'cliente_qr']);
-    }
-
-    /**
-     * Determine whether the user can update the model.
-     */
-    public function update(User $user, Appointment $appointment): bool
-    {
-        // Solo el veterinario asignado puede actualizar la cita
-        if ($user->hasRole('veterinario') && $appointment->veterinarian_id === $user->id) {
-            return true;
-        }
-        
-        // Cliente puede cancelar su cita si está permitido
-        if ($user->hasRole('cliente_qr') && 
-            $appointment->client_id === $user->id && 
-            $appointment->canBeCancelled()) {
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * Determine whether the user can delete the model.
-     */
-    public function delete(User $user, Appointment $appointment): bool
-    {
-        // Solo el veterinario asignado puede eliminar la cita
-        return $user->hasRole('veterinario') && $appointment->veterinarian_id === $user->id;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, Appointment $appointment): bool
-    {
-        return $user->hasRole('veterinario') && $appointment->veterinarian_id === $user->id;
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, Appointment $appointment): bool
-    {
-        return $user->hasRole('veterinario') && $appointment->veterinarian_id === $user->id;
+        return $user->id === $appointment->veterinarian_id && $appointment->canBeCancelled();
     }
 }

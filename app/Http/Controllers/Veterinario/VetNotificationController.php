@@ -25,7 +25,7 @@ class VetNotificationController extends Controller
         
         $notificacionesNoLeidas = $notificaciones->count();
         
-        return view('dashboard.veterinario.notificaciones.index', compact('notificaciones', 'notificacionesNoLeidas'));
+        return view('veterinarian.notificaciones.index', compact('notificaciones', 'notificacionesNoLeidas'));
     }
     
     /**

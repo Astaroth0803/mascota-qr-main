@@ -45,7 +45,7 @@ class AppointmentController extends Controller
             'last_appointment' => $pastAppointments->sortByDesc('requested_datetime')->first()
         ];
         
-        return view('dashboard.cliente.calendario', compact('pets', 'appointments', 'upcomingAppointments', 'pastAppointments', 'stats'));
+        return view('client.calendario', compact('pets', 'appointments', 'upcomingAppointments', 'pastAppointments', 'stats'));
     }
     
     /**
@@ -61,7 +61,7 @@ class AppointmentController extends Controller
         $pets = Pet::where('user_id', $userId)->with(['veterinariosActivos'])->get();
         $appointmentTypes = VaccinationRecord::getTypeOptions();
         
-        return view('dashboard.cliente.crear-cita', compact('pets', 'appointmentTypes'));
+        return view('client.crear-cita', compact('pets', 'appointmentTypes'));
     }
     
     /**
@@ -82,51 +82,54 @@ class AppointmentController extends Controller
         
         $validated = $request->validate([
             'pet_id' => 'required|exists:pets,id',
-            'record_type' => 'required|in:consulta,vacuna,operacion,emergencia,checkeo',
+            'veterinarian_id' => 'required|exists:users,id',
+            'appointment_type' => 'required|in:consulta,vacunacion,cirugia,emergencia,chequeo',
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required|date_format:H:i',
-            'veterinarian_id' => 'nullable|exists:users,id',
-            'location' => 'nullable|string|max:255',
-            'observations' => 'nullable|string',
-            'diagnosis' => 'nullable|string',
-            'treatment' => 'nullable|string',
-            'vaccine_name' => 'nullable|string|max:255',
-            'next_date' => 'nullable|date|after:date'
+            'description' => 'nullable|string',
         ]);
         
-        // El vaccine_name será determinado por el veterinario, no por el cliente
-        $validated['vaccine_name'] = null;
+        // Verificar que el veterinario existe y tiene el rol correcto
+        $veterinarian = \App\Models\User::role('veterinario')
+            ->where('id', $validated['veterinarian_id'])
+            ->firstOrFail();
         
-        // Si el usuario es veterinario, asignarlo automáticamente
-        if (Auth::user()->hasRole('veterinario')) {
-            $validated['veterinarian_id'] = Auth::id();
-        } else {
-            // Para clientes, usar el veterinarian_id del formulario o asignar uno por defecto
-            if (empty($validated['veterinarian_id'])) {
-                // Buscar el veterinario principal asignado a la mascota
-                $mascota = Pet::find($validated['pet_id']);
-                $veterinarioPrincipal = $mascota->veterinariosActivos()->where('tipo_asignacion', 'licenciado')->first();
-                
-                if ($veterinarioPrincipal) {
-                    $validated['veterinarian_id'] = $veterinarioPrincipal->id;
-                }
+        try {
+            // Crear solicitud de cita usando el modelo AppointmentRequest (mismo método que appointment-requests/create)
+            $appointmentRequest = \App\Models\AppointmentRequest::create([
+                'pet_id' => $validated['pet_id'],
+                'client_id' => Auth::id(),
+                'veterinarian_id' => $validated['veterinarian_id'],
+                'status' => \App\Models\AppointmentRequest::STATUS_PENDING,
+                'requested_datetime' => Carbon::parse($validated['date'] . ' ' . $validated['time']),
+                'appointment_type' => $validated['appointment_type'],
+                'description' => $validated['description'] ?? null,
+            ]);
+            
+            // Si es una petición AJAX, devolver JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud de cita enviada exitosamente para ' . $pet->nombre . '. El veterinario la revisará pronto.'
+                ]);
             }
+            
+            return redirect()->route('dashboard.cliente.calendario.index')
+                            ->with('success', 'Solicitud de cita enviada exitosamente para ' . $pet->nombre . '. El veterinario la revisará pronto.');
+                            
+        } catch (\Exception $e) {
+            // Si es una petición AJAX, devolver JSON con error
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear la solicitud de cita: ' . $e->getMessage()
+                ], 422);
+            }
+            
+            return redirect()->back()
+                            ->with('error', 'Error al crear la solicitud de cita: ' . $e->getMessage())
+                            ->withInput();
         }
-        
-        // Crear cita usando el modelo Appointment con estado pendiente
-        $appointment = Appointment::create([
-            'pet_id' => $validated['pet_id'],
-            'client_id' => Auth::id(),
-            'veterinarian_id' => $validated['veterinarian_id'],
-            'record_type' => $validated['record_type'],
-            'requested_datetime' => Carbon::parse($validated['date'] . ' ' . $validated['time']),
-            'location' => $validated['location'],
-            'observations' => $validated['observations'],
-            'status' => Appointment::STATUS_PENDING, // Estado pendiente para que aparezca en solicitudes
-        ]);
-        
-        return redirect()->route('dashboard.cliente.calendario.index')
-                        ->with('success', 'Solicitud de cita enviada exitosamente para ' . $pet->nombre . '. El veterinario la revisará pronto.');
     }
     
     /**
@@ -144,7 +147,7 @@ class AppointmentController extends Controller
             ->with(['pet', 'veterinarian'])
             ->findOrFail($id);
         
-        return view('dashboard.cliente.detalle-cita', compact('appointment'));
+        return view('client.detalle-cita', compact('appointment'));
     }
     
     /**
@@ -166,7 +169,7 @@ class AppointmentController extends Controller
         $pets = Pet::where('user_id', $userId)->get();
         $appointmentTypes = VaccinationRecord::getTypeOptions();
         
-        return view('dashboard.cliente.editar-cita', compact('appointment', 'pets', 'appointmentTypes'));
+        return view('client.editar-cita', compact('appointment', 'pets', 'appointmentTypes'));
     }
     
     /**

@@ -10,6 +10,8 @@ export default {
 
     ],
 
+    darkMode: 'class', // Habilitar modo oscuro con clase
+
     theme: {
         extend: {
             fontFamily: {

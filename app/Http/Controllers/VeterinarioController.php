@@ -7,10 +7,25 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Pet;
 use App\Models\MascotaVeterinario;
 use App\Models\VaccinationRecord;
+use App\Models\Appointment;
+use App\Models\AppointmentRequest;
 use App\Policies\MedicalHistoryPolicy;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Gate;
 
+/**
+ * VeterinarioController
+ * 
+ * Controlador principal para la gestión de veterinarios en el sistema Mascota QR.
+ * Maneja dashboard, gestión de mascotas, historial médico y estadísticas.
+ * 
+ * Funcionalidades principales:
+ * - Dashboard con estadísticas y gráficos
+ * - Gestión de mascotas asignadas
+ * - Historial médico (vacunas, tratamientos, etc.)
+ * - Sistema de citas y notificaciones
+ * - Reportes y análisis de datos
+ */
 class VeterinarioController extends Controller
 {
     use AuthorizesRequests;
@@ -28,9 +43,8 @@ class VeterinarioController extends Controller
         // Estadísticas
         $stats = [
             'total_mascotas' => $mascotasAsignadas->count(),
-            'mascotas_principales' => $veterinario->mascotasPrincipales()->count(),
             'citas_hoy' => $this->getCitasHoy($veterinario->id),
-            'vacunas_pendientes' => $this->getVacunasPendientes($veterinario->id),
+            'citas_pendientes' => $this->getCitasPendientes($veterinario->id),
         ];
 
         // Notificaciones
@@ -45,8 +59,17 @@ class VeterinarioController extends Controller
 
         // Obtener citas del mes actual para el calendario
         $monthlyAppointments = $this->getMonthlyAppointments($veterinario->id);
+        
+        // Obtener próximas citas
+        $upcomingAppointments = $this->getUpcomingAppointments($veterinario->id);
 
-        return view('dashboard.veterinario.index', compact('mascotasAsignadas', 'stats', 'notificaciones', 'notificacionesSolicitudes', 'monthlyAppointments'));
+        // Obtener datos para gráficos
+        $dailyChartData = $this->getDailyChartData($veterinario->id);
+        $weeklyChartData = $this->getWeeklyChartData($veterinario->id);
+        $monthlyChartData = $this->getMonthlyChartData($veterinario->id);
+        $specificDayData = $this->getSpecificDayData($veterinario->id, now()->toDateString());
+
+        return view('veterinarian.index', compact('stats', 'notificaciones', 'notificacionesSolicitudes', 'monthlyAppointments', 'upcomingAppointments', 'dailyChartData', 'weeklyChartData', 'monthlyChartData', 'specificDayData'));
     }
 
     /**
@@ -59,7 +82,7 @@ class VeterinarioController extends Controller
             ->with(['user', 'veterinariosActivos'])
             ->paginate(10);
 
-        return view('dashboard.veterinario.mascotas', compact('mascotasAsignadas'));
+        return view('veterinarian.mascotas', compact('mascotasAsignadas'));
     }
 
     /**
@@ -79,7 +102,7 @@ class VeterinarioController extends Controller
         }
         
 
-        return view('dashboard.veterinario.mascota-show', compact('pet', 'asignacion'));
+        return view('veterinarian.mascota-show', compact('pet', 'asignacion'));
     }
 
     /**
@@ -102,7 +125,7 @@ class VeterinarioController extends Controller
         $tiposRegistros = \App\Models\VaccinationRecord::getTypeOptions();
         $vacunasComunes = \App\Models\VaccinationRecord::getVaccinesBySpecies($pet->especie);
         
-        return view('dashboard.veterinario.gestionar-historial', compact('pet', 'vacunas', 'tiposRegistros', 'vacunasComunes'));
+        return view('veterinarian.gestionar-historial', compact('pet', 'vacunas', 'tiposRegistros', 'vacunasComunes'));
     }
 
     /**
@@ -216,8 +239,8 @@ class VeterinarioController extends Controller
     private function getCitasHoy($veterinarioId)
     {
         $today = now()->toDateString();
-        return VaccinationRecord::where('veterinarian_id', $veterinarioId)
-            ->where('date', $today)
+        return Appointment::where('veterinarian_id', $veterinarioId)
+            ->whereDate('scheduled_datetime', $today)
             ->count();
     }
 
@@ -229,14 +252,13 @@ class VeterinarioController extends Controller
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
         
-        return VaccinationRecord::where('veterinarian_id', $veterinarioId)
-            ->whereBetween('date', [$startOfMonth, $endOfMonth])
+        return Appointment::where('veterinarian_id', $veterinarioId)
+            ->whereBetween('scheduled_datetime', [$startOfMonth, $endOfMonth])
             ->with(['pet.user'])
-            ->orderBy('date')
-            ->orderBy('time')
+            ->orderBy('scheduled_datetime')
             ->get()
             ->groupBy(function($appointment) {
-                return $appointment->date->format('Y-m-d');
+                return $appointment->scheduled_datetime->format('Y-m-d');
             })
             ->map(function($appointments) {
                 return $appointments->map(function($appointment) {
@@ -244,9 +266,9 @@ class VeterinarioController extends Controller
                         'id' => $appointment->id,
                         'pet_name' => $appointment->pet->nombre,
                         'owner_name' => $appointment->pet->user->name ?? 'N/A',
-                        'time' => $appointment->time ? ($appointment->time instanceof \Carbon\Carbon ? $appointment->time->format('H:i') : \Carbon\Carbon::parse($appointment->time)->format('H:i')) : '09:00',
+                        'time' => $appointment->scheduled_datetime ? $appointment->scheduled_datetime->format('H:i') : '09:00',
                         'type' => $appointment->record_type,
-                        'type_label' => $appointment->getTypeOptions()[$appointment->record_type] ?? ucfirst($appointment->record_type),
+                        'type_label' => $this->getRecordTypeLabel($appointment->record_type),
                         'location' => $appointment->location,
                         'url' => route('dashboard.veterinario.calendario.show', $appointment->id),
                         'color' => $this->getAppointmentColor($appointment->record_type)
@@ -273,14 +295,283 @@ class VeterinarioController extends Controller
             default: return '#6B7280'; // gray-500
         }
     }
+    
+    /**
+     * Obtener etiqueta para el tipo de registro
+     */
+    private function getRecordTypeLabel($recordType)
+    {
+        $labels = [
+            'vacuna' => 'Vacunación',
+            'checkeo' => 'Chequeo',
+            'peluqueria' => 'Peluquería',
+            'operacion' => 'Operación',
+            'emergencia' => 'Emergencia',
+            'dental' => 'Dental',
+            'dermatologia' => 'Dermatología',
+            'neurologia' => 'Neurología',
+            'cardiologia' => 'Cardiología',
+        ];
+        
+        return $labels[$recordType] ?? ucfirst($recordType);
+    }
 
     /**
-     * Obtener vacunas pendientes para un veterinario
+     * Obtener citas pendientes para un veterinario
      */
-    private function getVacunasPendientes($veterinarioId)
+    private function getCitasPendientes($veterinarioId)
     {
-        // TODO: Implementar lógica para vacunas pendientes
-        return 0;
+        return AppointmentRequest::where('veterinarian_id', $veterinarioId)
+            ->where('status', 'pendiente')
+            ->count();
+    }
+    
+    /**
+     * Obtener próximas citas para un veterinario (solo citas aceptadas y no finalizadas)
+     */
+    private function getUpcomingAppointments($veterinarioId)
+    {
+        // Debug: Ver todas las citas del veterinario
+        $allAppointments = AppointmentRequest::where('veterinarian_id', $veterinarioId)->get();
+        \Log::info('Todas las citas del veterinario:', $allAppointments->toArray());
+        
+        // Debug específico: Ver la cita con ID 4
+        $cita4 = AppointmentRequest::find(4);
+        if ($cita4) {
+            \Log::info('Cita ID 4:', [
+                'id' => $cita4->id,
+                'status' => $cita4->status,
+                'scheduled_datetime' => $cita4->scheduled_datetime,
+                'veterinarian_id' => $cita4->veterinarian_id,
+                'pet_id' => $cita4->pet_id
+            ]);
+        } else {
+            \Log::info('Cita ID 4 no encontrada');
+        }
+        
+        // Buscar en appointment_requests las solicitudes aceptadas que NO tengan citas finalizadas
+        $upcomingAppointments = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+            ->where('status', 'aceptado')
+            ->whereDate('scheduled_datetime', '>=', now()->toDateString())
+            ->whereDoesntHave('appointment', function($query) {
+                $query->whereIn('status', ['finalizada', 'completada', 'cita_terminada']);
+            })
+            ->with(['pet.user', 'appointment'])
+            ->orderBy('scheduled_datetime')
+            ->limit(5)
+            ->get();
+            
+        \Log::info('Citas próximas encontradas:', $upcomingAppointments->toArray());
+        
+        return $upcomingAppointments;
+    }
+
+    /**
+     * Obtener datos del gráfico diario (últimos 7 días)
+     */
+    private function getDailyChartData($veterinarioId)
+    {
+        // Debug: Ver todos los status únicos en la base de datos
+        $allStatuses = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+            ->distinct()
+            ->pluck('status')
+            ->toArray();
+        \Log::info('Status únicos encontrados:', $allStatuses);
+        
+        $days = [];
+        $completed = [];
+        $rejected = [];
+        $cancelled = [];
+
+        // Obtener datos de los últimos 7 días
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $days[] = $date->format('d/m');
+            
+            $startOfDay = $date->copy()->startOfDay();
+            $endOfDay = $date->copy()->endOfDay();
+            
+            // Citas finalizadas - buscar en appointments donde la solicitud está aceptada
+            $completed[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfDay, $endOfDay) {
+                    $query->whereIn('status', ['finalizada', 'completada', 'cita_terminada'])
+                          ->whereBetween('scheduled_datetime', [$startOfDay, $endOfDay]);
+                })
+                ->count();
+            
+            // Citas rechazadas
+            $rejected[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'rechazado')
+                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->count();
+            
+            // Citas canceladas - buscar en appointments donde la solicitud está aceptada
+            $cancelled[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfDay, $endOfDay) {
+                    $query->whereIn('status', ['cancelada', 'cita_cancelada'])
+                          ->whereBetween('scheduled_datetime', [$startOfDay, $endOfDay]);
+                })
+                ->count();
+        }
+
+        return [
+            'labels' => $days,
+            'completed' => $completed,
+            'rejected' => $rejected,
+            'cancelled' => $cancelled
+        ];
+    }
+
+    /**
+     * Obtener datos del gráfico mensual
+     */
+    private function getMonthlyChartData($veterinarioId)
+    {
+        $months = [];
+        $completed = [];
+        $rejected = [];
+        $cancelled = [];
+
+        // Obtener datos de los últimos 6 meses
+        for ($i = 5; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $months[] = $date->format('M Y');
+            
+            $startOfMonth = $date->copy()->startOfMonth();
+            $endOfMonth = $date->copy()->endOfMonth();
+            
+            // Citas finalizadas - buscar en appointments donde la solicitud está aceptada
+            $completed[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfMonth, $endOfMonth) {
+                    $query->whereIn('status', ['finalizada', 'completada', 'cita_terminada'])
+                          ->whereBetween('scheduled_datetime', [$startOfMonth, $endOfMonth]);
+                })
+                ->count();
+            
+            // Citas rechazadas
+            $rejected[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'rechazado')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->count();
+            
+            // Citas canceladas - buscar en appointments donde la solicitud está aceptada
+            $cancelled[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfMonth, $endOfMonth) {
+                    $query->whereIn('status', ['cancelada', 'cita_cancelada'])
+                          ->whereBetween('scheduled_datetime', [$startOfMonth, $endOfMonth]);
+                })
+                ->count();
+        }
+
+        return [
+            'labels' => $months,
+            'completed' => $completed,
+            'rejected' => $rejected,
+            'cancelled' => $cancelled
+        ];
+    }
+
+    /**
+     * Obtener datos del gráfico semanal
+     */
+    private function getWeeklyChartData($veterinarioId)
+    {
+        $weeks = [];
+        $completed = [];
+        $rejected = [];
+        $cancelled = [];
+
+        // Obtener datos de las últimas 8 semanas
+        for ($i = 7; $i >= 0; $i--) {
+            $date = now()->subWeeks($i);
+            $weeks[] = 'Sem ' . $date->format('W');
+            
+            $startOfWeek = $date->copy()->startOfWeek();
+            $endOfWeek = $date->copy()->endOfWeek();
+            
+            // Citas finalizadas - buscar en appointments donde la solicitud está aceptada
+            $completed[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfWeek, $endOfWeek) {
+                    $query->whereIn('status', ['finalizada', 'completada', 'cita_terminada'])
+                          ->whereBetween('scheduled_datetime', [$startOfWeek, $endOfWeek]);
+                })
+                ->count();
+            
+            // Citas rechazadas
+            $rejected[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'rechazado')
+                ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->count();
+            
+            // Citas canceladas - buscar en appointments donde la solicitud está aceptada
+            $cancelled[] = AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                ->where('status', 'aceptado')
+                ->whereHas('appointment', function($query) use ($startOfWeek, $endOfWeek) {
+                    $query->whereIn('status', ['cancelada', 'cita_cancelada'])
+                          ->whereBetween('scheduled_datetime', [$startOfWeek, $endOfWeek]);
+                })
+                ->count();
+        }
+
+        return [
+            'labels' => $weeks,
+            'completed' => $completed,
+            'rejected' => $rejected,
+            'cancelled' => $cancelled
+        ];
+    }
+
+    /**
+     * Obtener datos de un día específico
+     */
+    private function getSpecificDayData($veterinarioId, $date)
+    {
+        $startOfDay = \Carbon\Carbon::parse($date)->startOfDay();
+        $endOfDay = \Carbon\Carbon::parse($date)->endOfDay();
+        
+        return [
+            'labels' => [\Carbon\Carbon::parse($date)->format('d/m')],
+            'completed' => [
+                AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                    ->where('status', 'aceptado')
+                    ->whereHas('appointment', function($query) use ($startOfDay, $endOfDay) {
+                        $query->whereIn('status', ['finalizada', 'completada', 'cita_terminada'])
+                              ->whereBetween('scheduled_datetime', [$startOfDay, $endOfDay]);
+                    })
+                    ->count()
+            ],
+            'rejected' => [
+                AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                    ->where('status', 'rechazado')
+                    ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                    ->count()
+            ],
+            'cancelled' => [
+                AppointmentRequest::where('veterinarian_id', $veterinarioId)
+                    ->where('status', 'aceptado')
+                    ->whereHas('appointment', function($query) use ($startOfDay, $endOfDay) {
+                        $query->whereIn('status', ['cancelada', 'cita_cancelada'])
+                              ->whereBetween('scheduled_datetime', [$startOfDay, $endOfDay]);
+                    })
+                    ->count()
+            ]
+        ];
+    }
+
+    /**
+     * Obtener datos del gráfico para un día específico (AJAX)
+     */
+    public function getChartDataForDate($date)
+    {
+        $veterinarioId = Auth::id();
+        $data = $this->getSpecificDayData($veterinarioId, $date);
+        
+        return response()->json($data);
     }
 
     /**

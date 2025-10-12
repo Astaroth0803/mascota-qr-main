@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="user-id" content="{{ auth()->id() }}">
         <title>@auth{{ Auth::user()->hasAnyRole(['administrador', 'super_admin']) ? 'Buky World | Admin' : (Auth::user()->hasRole('cliente_qr') ? 'Buky World | Cliente' : 'Buky World') }}@else{{ config('app.name', default: 'Buky World') }}@endauth</title>
         @vite(['resources/css/main.css'])
         <!-- Fonts -->
@@ -31,12 +32,35 @@
             <!-- Page Content -->
             <x-sidebar-menu />
             <main>
-                {{ $slot }}
+                @yield('content')
             </main>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/flowbite@3.0.0/dist/flowbite.min.js"></script>
 
         {{-- Required for pushed scripts from components --}}
         @stack('scripts')
+        
+        <!-- Sistema de notificaciones en tiempo real -->
+        @if(config('broadcasting.default') === 'pusher' && config('broadcasting.connections.pusher.key'))
+        <!-- Pusher para notificaciones en tiempo real -->
+        <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+        <script>
+            // Configuración de Pusher
+            window.Pusher = Pusher;
+            window.process = { env: { 
+                MIX_PUSHER_APP_KEY: '{{ config('broadcasting.connections.pusher.key') }}',
+                MIX_PUSHER_APP_CLUSTER: '{{ config('broadcasting.connections.pusher.options.cluster') }}'
+            }};
+        </script>
+        @else
+        <!-- Modo desarrollo sin Pusher -->
+        <script>
+            // Configuración mínima para desarrollo
+            window.process = { env: { 
+                MIX_PUSHER_APP_KEY: 'mock_key',
+                MIX_PUSHER_APP_CLUSTER: 'mock_cluster'
+            }};
+        </script>
+        @endif
     </body>
 </html>

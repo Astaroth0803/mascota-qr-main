@@ -71,7 +71,7 @@ class VeterinarioController extends Controller
             }
         }
         
-        return view('dashboard.cliente.veterinarios.index', compact(
+        return view('client.veterinarios.index', compact(
             'veterinarios', 
             'tiposVeterinarios', 
             'mascotasCliente',
@@ -193,7 +193,7 @@ class VeterinarioController extends Controller
             'mascotas_auxiliares' => $mascotasAsignadas->where('pivot.tipo_asignacion', 'auxiliar')->count(),
         ];
         
-        return view('dashboard.cliente.veterinarios.show', compact('veterinario', 'mascotasAsignadas', 'stats'));
+        return view('client.veterinarios.show', compact('veterinario', 'mascotasAsignadas', 'stats'));
     }
 
     /**
@@ -211,7 +211,7 @@ class VeterinarioController extends Controller
           ->orderBy('fecha_asignacion', 'desc')
           ->get();
         
-        return view('dashboard.cliente.veterinarios.mis-veterinarios', compact('asignaciones'));
+        return view('client.veterinarios.mis-veterinarios', compact('asignaciones'));
     }
 
     /**

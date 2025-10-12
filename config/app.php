@@ -168,6 +168,7 @@ return [
         /*
          * Application Service Providers...
          */
+        App\Providers\EventServiceProvider::class,
     ],
 
 ];

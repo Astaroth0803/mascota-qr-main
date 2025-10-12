@@ -31,7 +31,7 @@
     ];
 @endphp
 
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
     <div class="flex items-center">
         <div class="flex-shrink-0">
             <div class="w-8 h-8 {{ $colorClasses[$color] ?? $colorClasses['blue'] }} rounded-lg flex items-center justify-center">
@@ -41,12 +41,12 @@
             </div>
         </div>
         <div class="ml-4 flex-1">
-            <p class="text-sm font-medium text-gray-600">{{ $title }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ $title }}</p>
             <div class="flex items-baseline">
-                <p class="text-2xl font-semibold text-gray-900">{{ $value }}</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $value }}</p>
                 @if($change !== null)
-                    <span class="ml-2 flex items-baseline text-sm font-semibold {{ $changeType === 'positive' ? 'text-green-600' : 'text-red-600' }}">
-                        <svg class="self-center flex-shrink-0 h-4 w-4 {{ $changeType === 'positive' ? 'text-green-500' : 'text-red-500' }}" fill="currentColor" viewBox="0 0 20 20">
+                    <span class="ml-2 flex items-baseline text-sm font-semibold {{ $changeType === 'positive' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                        <svg class="self-center flex-shrink-0 h-4 w-4 {{ $changeType === 'positive' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400' }}" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
                         <span class="sr-only">{{ $changeType === 'positive' ? 'Aumentó' : 'Disminuyó' }} en</span>
@@ -55,11 +55,11 @@
                 @endif
             </div>
             @if($description)
-                <p class="text-sm text-gray-500 mt-1">{{ $description }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $description }}</p>
             @endif
             @if($trend)
                 <div class="mt-2">
-                    <div class="flex items-center text-xs text-gray-500">
+                    <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                         </svg>

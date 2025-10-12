@@ -38,7 +38,7 @@ class QRController extends Controller
             'pets_without_qr' => $pets->whereNull('qr_code')->count(),
         ];
 
-        return view('dashboard.cliente.qr.index', compact('pets', 'stats'));
+        return view('client.qr.index', compact('pets', 'stats'));
     }
 
     /**
@@ -72,12 +72,27 @@ class QRController extends Controller
     {
         $user = Auth::user();
         
+        Log::info('QRController@show called', [
+            'pet_id' => $pet->id,
+            'pet_name' => $pet->nombre,
+            'user_id' => $user->id,
+            'pet_user_id' => $pet->user_id,
+            'pet_correo_owner' => $pet->correo_owner
+        ]);
+        
         // Verificar que la mascota pertenece al usuario
         if ($pet->user_id !== $user->id && $pet->correo_owner !== $user->email) {
+            Log::warning('Access denied to pet', [
+                'pet_id' => $pet->id,
+                'user_id' => $user->id,
+                'pet_user_id' => $pet->user_id,
+                'pet_correo_owner' => $pet->correo_owner
+            ]);
             abort(403, 'No tienes permisos para ver esta mascota');
         }
 
         if (!$pet->qr_code) {
+            Log::info('Pet has no QR code', ['pet_id' => $pet->id, 'pet_name' => $pet->nombre]);
             return redirect()->route('dashboard.cliente.qr.index')
                 ->with('error', 'Esta mascota no tiene código QR. Genera uno primero.');
         }
@@ -85,7 +100,13 @@ class QRController extends Controller
         $publicUrl = $this->qrCodeService->generatePublicUrl($pet);
         $qrImageUrl = $this->qrCodeService->generateQRImageUrl($publicUrl);
 
-        return view('dashboard.cliente.qr.show', compact('pet', 'publicUrl', 'qrImageUrl'));
+        Log::info('QR view loaded successfully', [
+            'pet_id' => $pet->id,
+            'public_url' => $publicUrl,
+            'qr_image_url' => $qrImageUrl
+        ]);
+
+        return view('client.qr.show', compact('pet', 'publicUrl', 'qrImageUrl'));
     }
 
     /**

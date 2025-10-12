@@ -226,20 +226,21 @@ class User extends Authenticatable
         return $this->notificacionesCliente()->noLeidas();
     }
 
+
     /**
-     * Solicitudes de cambio de citas como cliente
+     * Notificaciones de citas
      */
-    public function appointmentChangeRequestsAsClient()
+    public function appointmentNotifications()
     {
-        return $this->hasMany(AppointmentChangeRequest::class, 'client_id');
+        return $this->hasMany(AppointmentNotification::class);
     }
 
     /**
-     * Solicitudes de cambio de citas como veterinario
+     * Notificaciones no leídas de citas
      */
-    public function appointmentChangeRequestsAsVeterinarian()
+    public function unreadAppointmentNotifications()
     {
-        return $this->hasMany(AppointmentChangeRequest::class, 'veterinarian_id');
+        return $this->appointmentNotifications()->unread();
     }
 
     /**

@@ -1,6 +1,24 @@
 import './bootstrap';
 import axios from 'axios';
 import Alpine from 'alpinejs';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+import './notifications';
+
+// Configurar axios con CSRF token
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+// Configurar Laravel Echo
+window.Pusher = Pusher;
+
+window.Echo = new Echo({
+    broadcaster: 'pusher',
+    key: 'cffab9fc9e9dee0dbb7f',
+    cluster: 'us2',
+    forceTLS: true,
+    enabledTransports: ['ws', 'wss'],
+});
 
 window.Alpine = Alpine;
 
@@ -18,7 +36,6 @@ Alpine.start();
 
         // Enviar la actualización al servidor usando AJAX
         axios.put(`/pets/${id}`, {
-            _token: '{{ csrf_token() }}', // CSRF Token para seguridad
             [field]: value
         })
         .then(response => {

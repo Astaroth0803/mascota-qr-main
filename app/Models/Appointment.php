@@ -28,7 +28,10 @@ class Appointment extends Model
         'lot_number',
         'creation_date',
         'expiry_date',
-        'cancellation_reason'
+        'cancellation_reason',
+        'rejection_reason',
+        'reschedule_reason',
+        'notes'
     ];
 
     protected $casts = [
@@ -41,10 +44,13 @@ class Appointment extends Model
 
     // Estados disponibles
     const STATUS_PENDING = 'pendiente';
+    const STATUS_ACCEPTED = 'aceptado';
+    const STATUS_REJECTED = 'rechazado';
     const STATUS_SCHEDULED = 'agendada';
     const STATUS_IN_PROGRESS = 'en_progreso';
     const STATUS_COMPLETED = 'finalizada';
     const STATUS_CANCELLED = 'cancelada';
+    const STATUS_RESCHEDULED = 'reagendada';
 
     // Tipos de registro
     const TYPE_VACCINE = 'vacuna';
@@ -102,6 +108,16 @@ class Appointment extends Model
         return $this->status === self::STATUS_PENDING;
     }
 
+    public function isAccepted()
+    {
+        return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    public function isRejected()
+    {
+        return $this->status === self::STATUS_REJECTED;
+    }
+
     public function isScheduled()
     {
         return $this->status === self::STATUS_SCHEDULED;
@@ -122,12 +138,27 @@ class Appointment extends Model
         return $this->status === self::STATUS_CANCELLED;
     }
 
+    public function isRescheduled()
+    {
+        return $this->status === self::STATUS_RESCHEDULED;
+    }
+
     /**
      * Validaciones de flujo de estados
      */
-    public function canBeScheduled()
+    public function canBeAccepted()
     {
         return $this->isPending();
+    }
+
+    public function canBeRejected()
+    {
+        return $this->isPending();
+    }
+
+    public function canBeScheduled()
+    {
+        return $this->isAccepted();
     }
 
     public function canBeInProgress()
@@ -142,14 +173,12 @@ class Appointment extends Model
 
     public function canBeCancelled()
     {
-        // Solo se puede cancelar 1 día antes de la cita agendada
-        if (!$this->scheduled_datetime) {
-            return true; // Si no está agendada, se puede cancelar
-        }
-        
-        $dayBeforeAppointment = $this->scheduled_datetime->subDay();
-        return Carbon::now()->lte($dayBeforeAppointment) && 
-               in_array($this->status, [self::STATUS_PENDING, self::STATUS_SCHEDULED]);
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED, self::STATUS_SCHEDULED]);
+    }
+
+    public function canBeRescheduled()
+    {
+        return in_array($this->status, [self::STATUS_ACCEPTED, self::STATUS_SCHEDULED]);
     }
 
     /**
@@ -159,10 +188,13 @@ class Appointment extends Model
     {
         return match($this->status) {
             self::STATUS_PENDING => 'Pendiente',
+            self::STATUS_ACCEPTED => 'Aceptado',
+            self::STATUS_REJECTED => 'Rechazado',
             self::STATUS_SCHEDULED => 'Agendada',
             self::STATUS_IN_PROGRESS => 'En Progreso',
             self::STATUS_COMPLETED => 'Finalizada',
             self::STATUS_CANCELLED => 'Cancelada',
+            self::STATUS_RESCHEDULED => 'Reagendada',
             default => 'Desconocido'
         };
     }
@@ -171,10 +203,13 @@ class Appointment extends Model
     {
         return match($this->status) {
             self::STATUS_PENDING => 'yellow',
+            self::STATUS_ACCEPTED => 'green',
+            self::STATUS_REJECTED => 'red',
             self::STATUS_SCHEDULED => 'blue',
             self::STATUS_IN_PROGRESS => 'purple',
             self::STATUS_COMPLETED => 'green',
             self::STATUS_CANCELLED => 'red',
+            self::STATUS_RESCHEDULED => 'purple',
             default => 'gray'
         };
     }
@@ -211,6 +246,14 @@ class Appointment extends Model
     {
         $available = [];
         
+        if ($this->canBeAccepted()) {
+            $available[self::STATUS_ACCEPTED] = 'Aceptar';
+        }
+        
+        if ($this->canBeRejected()) {
+            $available[self::STATUS_REJECTED] = 'Rechazar';
+        }
+        
         if ($this->canBeScheduled()) {
             $available[self::STATUS_SCHEDULED] = 'Agendar';
         }
@@ -227,7 +270,94 @@ class Appointment extends Model
             $available[self::STATUS_CANCELLED] = 'Cancelar';
         }
         
+        if ($this->canBeRescheduled()) {
+            $available[self::STATUS_RESCHEDULED] = 'Reagendar';
+        }
+        
         return $available;
+    }
+
+    /**
+     * Métodos de transición de estado
+     */
+    public function accept($scheduledDatetime = null, $notes = null)
+    {
+        if (!$this->canBeAccepted()) {
+            throw new \Exception('No se puede aceptar esta cita en su estado actual');
+        }
+
+        $this->update([
+            'status' => self::STATUS_ACCEPTED,
+            'scheduled_datetime' => $scheduledDatetime ?? $this->requested_datetime,
+            'notes' => $notes
+        ]);
+    }
+
+    public function reject($reason = null)
+    {
+        if (!$this->canBeRejected()) {
+            throw new \Exception('No se puede rechazar esta cita en su estado actual');
+        }
+
+        $this->update([
+            'status' => self::STATUS_REJECTED,
+            'rejection_reason' => $reason
+        ]);
+    }
+
+    public function schedule($scheduledDatetime = null)
+    {
+        if (!$this->canBeScheduled()) {
+            throw new \Exception('No se puede agendar esta cita en su estado actual');
+        }
+
+        $this->update([
+            'status' => self::STATUS_SCHEDULED,
+            'scheduled_datetime' => $scheduledDatetime ?? $this->scheduled_datetime
+        ]);
+    }
+
+    public function start()
+    {
+        if (!$this->canBeInProgress()) {
+            throw new \Exception('No se puede iniciar esta cita en su estado actual');
+        }
+
+        $this->update(['status' => self::STATUS_IN_PROGRESS]);
+    }
+
+    public function complete()
+    {
+        if (!$this->canBeCompleted()) {
+            throw new \Exception('No se puede completar esta cita en su estado actual');
+        }
+
+        $this->update(['status' => self::STATUS_COMPLETED]);
+    }
+
+    public function cancel($reason = null)
+    {
+        if (!$this->canBeCancelled()) {
+            throw new \Exception('No se puede cancelar esta cita en su estado actual');
+        }
+
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+            'cancellation_reason' => $reason
+        ]);
+    }
+
+    public function reschedule($newDatetime, $reason = null)
+    {
+        if (!$this->canBeRescheduled()) {
+            throw new \Exception('No se puede reagendar esta cita en su estado actual');
+        }
+
+        $this->update([
+            'status' => self::STATUS_RESCHEDULED,
+            'scheduled_datetime' => $newDatetime,
+            'reschedule_reason' => $reason
+        ]);
     }
 
     /**
