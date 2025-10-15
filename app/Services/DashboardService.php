@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Pet;
 use App\Models\User;
-use App\Models\Solicitud;
+use App\Models\PetRequest;
 use App\Models\VaccinationRecord;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Cache;
@@ -115,7 +115,7 @@ class DashboardService
             // Estadísticas generales
             $totalUsers = User::count();
             $totalPets = Pet::count();
-            $pendingSolicitudes = Solicitud::count();
+            $pendingSolicitudes = PetRequest::where('status', 'pending')->count();
             $verifiedPets = Pet::whereHas('payment', function($query) {
                 $query->where('status', 'verified');
             })->count();
@@ -159,7 +159,7 @@ class DashboardService
             $recentActivity = [
                 'new_users' => User::where('created_at', '>=', now()->subDays(7))->count(),
                 'new_pets' => Pet::where('created_at', '>=', now()->subDays(7))->count(),
-                'new_solicitudes' => Solicitud::where('created_at', '>=', now()->subDays(7))->count(),
+                'new_solicitudes' => PetRequest::where('created_at', '>=', now()->subDays(7))->count(),
                 'qr_generated' => Pet::whereNotNull('qr_code')
                     ->where('updated_at', '>=', now()->subDays(7))
                     ->count()
@@ -218,7 +218,7 @@ class DashboardService
         }
         
         // Solicitudes pendientes
-        $pendingSolicitudes = Solicitud::count();
+        $pendingSolicitudes = PetRequest::where('status', 'pending')->count();
         if ($pendingSolicitudes > 0) {
             $alerts[] = [
                 'type' => 'info',

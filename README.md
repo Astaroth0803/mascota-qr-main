@@ -1,5 +1,5 @@
 Buky World Project
-Welcome to the Buky World Project repository! This project is being developed by Ela Web Project as a private and proprietary initiative. Please read the following information carefully before proceeding.
+Welcome to the Buky World Project repository! This project is being developed by Ela Dev Project as a private and proprietary initiative. Please read the following information carefully before proceeding.
 
 📜 Repository Guidelines
 This repository is private. Unauthorized access, use, or distribution of the code within this repository is strictly prohibited.
